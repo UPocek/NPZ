@@ -36,13 +36,15 @@ func CreateHLL(p uint8) HLL {
 
 func (hll *HLL) AddElement(key string) {
 	hll.hashFunction.Reset()
-	hll.hashFunction.Write([]byte(key))
+	_, err := hll.hashFunction.Write([]byte(key))
+	if err != nil {
+		panic(err)
+	}
 	i := hll.hashFunction.Sum32()
 	n := bits.TrailingZeros32(i)
 	i = i >> (32 - hll.P)
 
 	hll.Reg[i] = uint8(n)
-
 }
 
 func createBuckets(p uint8) (uint32, []uint8) {
@@ -96,7 +98,10 @@ func (hll HLL) SerializeHLL(gen int) {
 	if err != nil {
 		panic(err)
 	}
-	file.Close()
+	err = file.Close()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func DeserializeHLL(gen int) HLL {
@@ -111,7 +116,10 @@ func DeserializeHLL(gen int) HLL {
 		panic(err)
 	}
 	hll.hashFunction = murmur3.New32WithSeed(uint32(hll.Ts))
-	file.Close()
+	err = file.Close()
+	if err != nil {
+		panic(err)
+	}
 	return hll
 }
 
