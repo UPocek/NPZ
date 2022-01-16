@@ -12,7 +12,7 @@ import (
 )
 
 type BloomFilter struct {
-	M  uint
+	M             uint
 	K             uint
 	Ts            uint
 	hashFunctions []hash.Hash32
@@ -67,7 +67,10 @@ func (b *BloomFilter) SerializeBloomFilter(gen int) {
 	if err != nil {
 		panic(err)
 	}
-	file.Close()
+	err = file.Close()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func DeserializeBloomFilter(gen int) BloomFilter {
@@ -112,6 +115,9 @@ func main() {
 
 	b1 := CreateBloomFilter(100, 0.05)
 	b1.AddElement("Pepermint")
+	b1.AddElement("Sun")
+	b1.AddElement("Ice")
+	b1.AddElement("Happy")
 	fmt.Println(b1.IsElementInBloomFilter("Pepermint"))
 
 }
