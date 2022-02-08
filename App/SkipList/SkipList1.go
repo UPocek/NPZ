@@ -1,6 +1,7 @@
 package SkipList
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -13,37 +14,38 @@ type SkipList struct {
 }
 
 type SkipListNode struct {
-	key       float64
+	key       string
 	value     []byte
 	tombstone bool
 	timestamp int64
 	next      []*SkipListNode
 }
-func CreateSkipList(maxHeight int,height int, size int)*SkipList {
-	node:= createNode(0, []byte("none"), maxHeight + 1)
+
+func CreateSkipList(maxHeight int, height int, size int) *SkipList {
+	node := createNode("", []byte("none"), maxHeight+1)
 	return &SkipList{
 		maxHeight: maxHeight,
-		height: height,
-		size: size,
-		head: node,
+		height:    height,
+		size:      size,
+		head:      node,
 	}
 }
-func createNode(key float64, val []byte, height int) *SkipListNode {
+func createNode(key string, val []byte, height int) *SkipListNode {
 	now := time.Now()
 	timestamp := now.Unix()
 	return &SkipListNode{
-		key: key,
-		value: val,
+		key:       key,
+		value:     val,
 		timestamp: timestamp,
 		tombstone: false,
-		next: make([]*SkipListNode,height),
+		next:      make([]*SkipListNode, height),
 	}
 }
 func (node *SkipListNode) GetValue() []byte {
 	return node.value
 }
 
-func (node *SkipListNode) GetKey() float64 {
+func (node *SkipListNode) GetKey() string {
 	return node.key
 }
 
@@ -60,9 +62,9 @@ func (s *SkipList) roll() int {
 	// We roll until we don't get 1 from rand function and we did not
 	// outgrow maxHeight. BUT rand can give us 0, and if that is the case
 	// than we will just increase level, and wait for 1 from rand!
-	for ; rand.Int31n(2) == 1;{
+	for rand.Int31n(2) == 1 {
 		level++
-		if level ==s.maxHeight {
+		if level == s.maxHeight {
 			// When we get 1 from rand function and we did not
 			// outgrow maxHeight, that number becomes new height
 			s.height = level
@@ -72,41 +74,41 @@ func (s *SkipList) roll() int {
 	}
 	return level
 }
-func (sl *SkipList) addFirstNode(node *SkipListNode,levels int)  {
-	for i:=0;i<=levels;i++{
-		sl.head.next[i]=node
+func (sl *SkipList) addFirstNode(node *SkipListNode, levels int) {
+	for i := 0; i <= levels; i++ {
+		sl.head.next[i] = node
 	}
 }
-func (sl *SkipList) addOnLevels(node *SkipListNode,levels int){
-	curr:=sl.head
-	for i := levels; i >= 0;i-- {
-		if curr.next[i]==nil{
+func (sl *SkipList) addOnLevels(node *SkipListNode, levels int) {
+	curr := sl.head
+	for i := levels; i >= 0; i-- {
+		if curr.next[i] == nil {
 			//ako je kraj liste na tom nivou
 			curr.next[i] = node
-		}else{
-			for curr.next[i].key<node.key{
-				curr=curr.next[i]
-				if curr.next[i]==nil{
+		} else {
+			for curr.next[i].key < node.key {
+				curr = curr.next[i]
+				if curr.next[i] == nil {
 					//ako je kraj liste na tom nivou
 					break
 				}
 			}
-			node.next[i]=curr.next[i]
-			curr.next[i]=node
+			node.next[i] = curr.next[i]
+			curr.next[i] = node
 		}
-		curr=sl.head
+		curr = sl.head
 	}
 }
-func (sl *SkipList) AddElement(key float64, value []byte) error {
+func (sl *SkipList) AddElement(key string, value []byte) (error, bool) {
 	node := sl.FindElement(key)
-	if node == nil{
+	if node == nil {
 		levels := sl.roll()
 		if levels > sl.height {
 			sl.height = levels
 		}
-		node := createNode(key,value,levels+1)
+		node := createNode(key, value, levels+1)
 		curr := sl.head
-		if curr.next[0] == nil{
+		if curr.next[0] == nil {
 			sl.addFirstNode(node, levels)
 		} else {
 			sl.addOnLevels(node, levels)
@@ -114,30 +116,29 @@ func (sl *SkipList) AddElement(key float64, value []byte) error {
 		}
 
 		sl.size += 1
-		return nil
+		return nil, true
 	} else {
 		now := time.Now()
 		timestamp := now.Unix()
 		node.value = value
 		node.tombstone = false
 		node.timestamp = timestamp
-		return nil
+		return nil, false
 	}
-
 }
 
-func (sl *SkipList) FindElement(key float64)*SkipListNode {
+func (sl *SkipList) FindElement(key string) *SkipListNode {
 	level := sl.height
 	curr_key := sl.head
-	for curr_key.key != key{
-		if curr_key.next[level] == nil || curr_key.next[level].key > key{
-			if level == 0{
+	for curr_key.key != key {
+		if curr_key.next[level] == nil || curr_key.next[level].key > key {
+			if level == 0 {
 				//log.Fatal("No match!")
 				return nil
-			}else{
+			} else {
 				level -= 1
 			}
-		}else{
+		} else {
 			curr_key = curr_key.next[level]
 		}
 
@@ -145,7 +146,7 @@ func (sl *SkipList) FindElement(key float64)*SkipListNode {
 	return curr_key
 }
 
-func (sl *SkipList) RemoveElement(key float64) uint8 {
+func (sl *SkipList) RemoveElement(key string) uint8 {
 	node := sl.FindElement(key)
 	if node == nil {
 		return 1
@@ -160,27 +161,26 @@ func (sl *SkipList) RemoveElement(key float64) uint8 {
 	return 2
 }
 
-func (skip *SkipList) LastLevel()[] *SkipListNode {
+func (skip *SkipList) LastLevel() []*SkipListNode {
 	curr := skip.head
-	res:= make([]*SkipListNode, 0)
-	curr=curr.next[0]
-	res=append(res,curr)
-	for i := 1; i <skip.size; i++{
-		curr=curr.next[0]
-		res=append(res,curr)
+	res := make([]*SkipListNode, 0)
+	curr = curr.next[0]
+	res = append(res, curr)
+	for i := 1; i < skip.size; i++ {
+		curr = curr.next[0]
+		res = append(res, curr)
 	}
 	return res
 }
 
-
-func (sl *SkipList) AddDeletedElement(key float64, value []byte) error{
+func (sl *SkipList) AddDeletedElement(key string, value []byte) error {
 	node := sl.FindElement(key)
-	if node != nil{
+	if node != nil {
 		levels := sl.roll()
-		node := createNode(key,value,levels+1)
+		node := createNode(key, value, levels+1)
 		node.tombstone = true
 		curr := sl.head
-		if curr.next[0] == nil{
+		if curr.next[0] == nil {
 			sl.addFirstNode(node, levels)
 		} else {
 			sl.addOnLevels(node, levels)
@@ -188,7 +188,7 @@ func (sl *SkipList) AddDeletedElement(key float64, value []byte) error{
 
 		sl.size += 1
 		return nil
-	}else{
+	} else {
 		now := time.Now()
 		timestamp := now.Unix()
 		node.value = value
@@ -198,16 +198,12 @@ func (sl *SkipList) AddDeletedElement(key float64, value []byte) error{
 	}
 }
 
-//func main() {
-//	sl:= createSkipList(5,0,1)
-//	sl.add(1,[]byte("mama"))
-//	sl.add(6,[]byte("deda"))
-//	sl.add(3,[]byte("seka"))
-//	sl.add(13,[]byte("mika"))
-//	sl.add(2,[]byte("joca"))
-//	node:=sl.find(1)
-//	fmt.Printf(string(node.value))
-//	sl.delete(1)
-//	sl.delete(2)
-//	fmt.Printf(string(node.value))
-//}
+func main() {
+	sl := CreateSkipList(5, 0, 1)
+	sl.AddElement("key1", []byte("mama"))
+	node := sl.FindElement("key1")
+	fmt.Printf(string(node.value))
+	sl.RemoveElement("key1")
+	sl.RemoveElement("key2")
+	fmt.Printf(string(node.value))
+}
