@@ -41,14 +41,18 @@ func (mr *MerkleTree) CreateTree() {
 		mr.leaves = append(mr.leaves, &newNode)
 		queue = append(queue, &newNode)
 	}
-	if len(mr.leaves)%2 != 0 {
-		key := Hash(make([]byte, 0, 0))
-		newNode := Node{
-			data:  key,
-			left:  nil,
-			right: nil,
+	if len(mr.leaves)%4 != 0 {
+		d := 0
+		for (len(mr.leaves)+d)%4 != 0 {
+			key := Hash(make([]byte, 0, 0))
+			newNode := Node{
+				data:  key,
+				left:  nil,
+				right: nil,
+			}
+			queue = append(queue, &newNode)
+			d += 1
 		}
-		queue = append(queue, &newNode)
 	}
 	for len(queue) > 1 {
 		leftN := queue[0]
