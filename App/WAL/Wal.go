@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"github.com/edsrzf/mmap-go"
 	"hash/crc32"
-	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -37,31 +36,31 @@ type WAL struct {
 	mainMap        map[string][]byte
 }
 
-func (wal WAL) SetSize(s int) {
-	wal.segmentSize = uint8(s)
+func (wal *WAL) SetFile(f *os.File) {
+	wal.file = f
+}
+
+func (wal *WAL) SetSegmentSize(size uint8) {
+	wal.segmentSize = size
+}
+
+func (wal *WAL) SetLWM(lwm uint8) {
+	wal.lwm = lwm
+}
+
+func (wal *WAL) SetMainMap(m map[string][]byte) {
+	wal.mainMap = m
 }
 
 func (wal *WAL) GetFileName() string {
 	return wal.file.Name()
 }
 
-func (wal *WAL) SetFile(f *os.File) {
-	wal.file=f
-}
-
 func (wal *WAL) GetLMW() uint8 {
 	return wal.lwm
 }
 
-func (wal *WAL) SetSegmentSize(size uint8)  {
-	wal.segmentSize=size
-}
-
-func (wal *WAL) SetMainMap(m map[string][]byte) {
-	wal.mainMap=m
-}
-
-func CreateWAL() WAL {
+func CreateWAL(segmensSize, lwm uint8) *WAL {
 	files, _ := ioutil.ReadDir("Data/wal/segments")
 	maxName := 0
 	for _, f := range files {
@@ -74,8 +73,8 @@ func CreateWAL() WAL {
 		}
 	}
 	wal := WAL{}
-	wal.segmentSize = 5
-	wal.lwm = 3
+	wal.segmentSize = segmensSize
+	wal.lwm = lwm
 	wal.mainMap = make(map[string][]byte)
 	if maxName != 0 {
 		wal.file, _ = os.OpenFile("Data/wal/segments/wal_"+strconv.Itoa(maxName)+".bin", os.O_RDWR, 0777)
@@ -83,7 +82,7 @@ func CreateWAL() WAL {
 		wal.file, _ = os.Create("Data/wal/segments/wal_1.bin")
 	}
 
-	return wal
+	return &wal
 
 }
 
@@ -223,61 +222,6 @@ func (w *WAL) DeleteElement(key string, value []byte) bool {
 
 	return true
 }
-func (w *WAL) Read(key string) {
-
-}
-func (w *WAL) ReconstructMap() map[string][]byte {
-	newMap := make(map[string][]byte)
-
-	writtenSegments := 0
-
-	files, _ := ioutil.ReadDir("Data/wal/segments")
-	for _, f := range files {
-		str := f.Name()
-		file, _ := os.OpenFile("Data/wal/segments/"+str, os.O_RDONLY, 0777)
-		file.Seek(0, 0)
-		writtenSegments = 0
-		for {
-			crc := make([]byte, 4)
-			_, err := file.Read(crc)
-			if err == io.EOF {
-				break
-			}
-
-			writtenSegments += 1
-
-			file.Seek(8, 1)
-
-			whatToDo := make([]byte, 1)
-			file.Read(whatToDo)
-
-			keySize := make([]byte, 8)
-			file.Read(keySize)
-			n := binary.LittleEndian.Uint64(keySize)
-
-			valueSize := make([]byte, 8)
-			file.Read(valueSize)
-			m := binary.LittleEndian.Uint64(valueSize)
-
-			key := make([]byte, n)
-			file.Read(key)
-			value := make([]byte, m)
-			file.Read(value)
-
-			if whatToDo[0] == 0 {
-				newMap[string(key)] = value
-			} else {
-				delete(newMap, string(key))
-			}
-		}
-	}
-
-	w.currentSegment = uint8(writtenSegments)
-
-	w.mainMap = newMap
-	return newMap
-}
-
 
 func (w *WAL) DeleteSegments() {
 	for i := 1; uint8(i) < w.lwm; i++ {
@@ -307,8 +251,8 @@ func (w *WAL) ResetWAL() *WAL {
 	if err != nil {
 		panic(err)
 	}
-	nw := CreateWAL()
-	return &nw
+	nw := CreateWAL(5, 3)
+	return nw
 }
 
 func (w *WAL) Finish() {

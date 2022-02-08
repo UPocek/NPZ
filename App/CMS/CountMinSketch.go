@@ -12,14 +12,14 @@ import (
 )
 
 type CountMinSketch struct {
-	M  uint
+	M             uint
 	K             uint
 	Ts            uint
 	hashFunctions []hash.Hash32
 	Matrix        [][]uint
 }
 
-func CreateCountMinSketch(epsilon float64, delta float64) CountMinSketch {
+func CreateCountMinSketch(epsilon float64, delta float64) *CountMinSketch {
 	cms := CountMinSketch{}
 
 	cms.M = calculateM(epsilon)
@@ -27,7 +27,7 @@ func CreateCountMinSketch(epsilon float64, delta float64) CountMinSketch {
 	cms.hashFunctions, cms.Ts = createHashFunctions(cms.K, 0)
 	cms.Matrix = createMatrix(cms.K, cms.M)
 
-	return cms
+	return &cms
 }
 
 func createMatrix(k uint, m uint) [][]uint {
@@ -70,8 +70,8 @@ func (cms *CountMinSketch) FrequencyOfElement(element string) uint {
 
 }
 
-func (cms CountMinSketch) SerializeCountMinSketch(gen int) {
-	file, err := os.Create("Data/countMinSketch/usertable-" + strconv.Itoa(gen) + "-CountMinSketch.db")
+func (cms CountMinSketch) SerializeCountMinSketch(gen, lvl int) {
+	file, err := os.Create("Data/countMinSketch/usertable-lvl=" + strconv.Itoa(lvl) + "-gen=" + strconv.Itoa(gen) + "-CountMinSketch.db")
 	if err != nil {
 		panic(err)
 	}
@@ -86,8 +86,8 @@ func (cms CountMinSketch) SerializeCountMinSketch(gen int) {
 	}
 }
 
-func DeserializeCountMinSketch(gen int) CountMinSketch {
-	file, err := os.OpenFile("Data/countMinSketch/usertable-"+strconv.Itoa(gen)+"-CountMinSketch.db", os.O_RDWR, 0777)
+func DeserializeCountMinSketch(gen, lvl int) CountMinSketch {
+	file, err := os.OpenFile("Data/countMinSketch/usertable-lvl="+strconv.Itoa(lvl)+"-gen="+strconv.Itoa(gen)+"-CountMinSketch.db", os.O_RDWR, 0777)
 	if err != nil {
 		panic(err)
 	}
