@@ -1,49 +1,47 @@
-package main
+package Memtable
 
 import (
 	"Projekat/App/BloomFilter"
 	"Projekat/App/CMS"
-	"Projekat/App/Cache"
 	"Projekat/App/HLL"
 	"Projekat/App/MerkleTree"
 	"Projekat/App/SkipList"
-	"Projekat/App/TokenBucket"
 	"Projekat/App/WAL"
 	"encoding/binary"
-	"fmt"
+	"github.com/spaolacci/murmur3"
+	"gopkg.in/yaml.v3"
+	"hash"
 	"hash/crc32"
 	"io"
 	"io/ioutil"
-	"log"
+	"math"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
+	"time"
+	"unsafe"
 )
 
 type Memtable struct {
 	size         uint
 	threshold    uint
 	currentSize  uint
-	skipList     skipList.SkipList
-	cms          countMinSketch.CountMinSketch
-	hll          hyperLogLog.HLL
-	wal          *wal.WAL
+	skipList     *SkipList.SkipList
+	cms          CMS.CountMinSketch
+	hll          HLL.HLL
+	wal          *WAL.WAL
 	hashFunction hash.Hash32
 }
 
-func createMemtable() Memtable {
+func CreateMemtable() Memtable {
 	memtable := Memtable{}
-	insideWal := wal.CreateWAL()
-	memtable.wal = &insideWal
-	memtable.skipList = skipList.CreateSkipList()
-	memtable.cms = countMinSketch.CreateCountMinSketch(0.01, 0.01)
-	memtable.hll = hyperLogLog.CreateHLL(4)
+	insideWal := WAL.CreateWAL()
 
+	memtable.wal = &insideWal
+	memtable.skipList = SkipList.CreateSkipList(10,0,0)
 	ts := uint(time.Now().Unix())
 	memtable.hashFunction = murmur3.New32WithSeed(uint32(ts))
-
-	yfile, err := ioutil.ReadFile("memtable/config.yaml")
+	yfile, err := ioutil.ReadFile("config.yaml")
 	if err != nil {
 		memtable.wal.SetSize(10)
 		memtable.size = 10
@@ -58,10 +56,78 @@ func createMemtable() Memtable {
 		memtable.size = uint(data["memtable_size"])
 		memtable.threshold = uint(data["threshold"])
 	}
+	memtable.cms = CMS.CreateCountMinSketch(0.01, 0.01)
+	memtable.hll = HLL.CreateHLL(4)
+	memtable.RecreateWALandSkipList()
 	return memtable
 }
 
-func (m Memtable) Write(key string, value []byte) bool {
+func (mem *Memtable) RecreateWALandSkipList() {
+
+	newMap := make(map[string][]byte)
+
+	writtenSegments := 0
+	var index uint8 = 0
+
+	files, _ := ioutil.ReadDir("Data/wal/segments")
+	for _, f := range files {
+		index += 1
+		str := f.Name()
+		file, _ := os.OpenFile("Data/wal/segments/"+str, os.O_RDONLY, 0777)
+		file.Seek(0, 0)
+		writtenSegments = 0
+		for {
+			crc := make([]byte, 4)
+			_, err := file.Read(crc)
+			if err == io.EOF {
+				break
+			}
+
+			writtenSegments += 1
+
+			file.Seek(8, 1)
+
+			whatToDo := make([]byte, 1)
+			file.Read(whatToDo)
+
+			keySize := make([]byte, 8)
+			file.Read(keySize)
+			n := binary.LittleEndian.Uint64(keySize)
+
+			valueSize := make([]byte, 8)
+			file.Read(valueSize)
+			m := binary.LittleEndian.Uint64(valueSize)
+
+			key := make([]byte, n)
+			file.Read(key)
+			value := make([]byte, m)
+			file.Read(value)
+			if whatToDo[0] == 0 {
+				newMap[string(key)] = value
+				mem.hashFunction.Write(key)
+				mem.cms.AddElement(string(key))
+				mem.hll.AddElement(string(key))
+				i := mem.hashFunction.Sum32()
+				err = mem.skipList.AddElement(float64(i), value)
+				if err != nil {
+					panic(err)
+				}
+				mem.currentSize += 1
+			} else {
+				delete(newMap, string(key))
+			}
+		}
+		file.Close()
+	}
+	if index > mem.wal.GetLMW() {
+		mem.wal.DeleteSegments()
+	}
+
+	mem.wal.SetMainMap(newMap)
+
+}
+
+func (m *Memtable) Write(key string, value []byte) bool {
 
 	success := m.wal.AddElement(key, value)
 	if success {
@@ -100,18 +166,10 @@ func (m Memtable) Delete(key string, value []byte) bool {
 
 func (m Memtable) Flush() {
 	gen := findCurrentGeneration()
-	elements := make([]*skipList.SkipListNode, m.currentSize, m.currentSize)
-	first := m.skipList.GetHead()
-	for first.GetDown() != nil {
-		first = first.GetDown()
-	}
-	for first.GetRight() != nil {
-		elements = append(elements, first.GetRight())
-		first = first.GetRight()
-	}
+	elements := m.skipList.LastLevel()
 
-	merkle := merkleTree.MerkleTree{}
-	bloom := bloomFilter.CreateBloomFilter(len(elements), 0.01)
+	merkle := MerkleTree.MerkleTree{}
+	bloom := BloomFilter.CreateBloomFilter(len(elements), 0.01)
 	for _, el := range elements {
 		merkle.AddElement(el.GetValue())
 		bloom.AddElement(string(el.GetValue()))
@@ -125,32 +183,40 @@ func (m Memtable) Flush() {
 	// usertable-GEN-Data.db
 	// usertable-GEN-Index.db
 	// usertable-GEN-Summary.db
-	CreateSSTable(elements, gen+1)
+	createSSTable(elements, gen+1)
 
 	// usertable-GEN-TOC.txt
-	file, err := os.OpenFile("toc/usertable-"+strconv.Itoa(gen+1)+"-TOC.txt", os.O_WRONLY|os.O_CREATE, 0777)
+	file, err := os.OpenFile("Data/toc/usertable-"+strconv.Itoa(gen+1)+"-TOC.txt", os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		panic(err)
 	}
-	file.Write([]byte("bloomFilter/usertable-" + strconv.Itoa(gen+1) + "-Filter.db\nmerkleTree/usertable-" + strconv.Itoa(gen+1) + "-Metadata.db\ndata/usertable-" + strconv.Itoa(gen+1) + "-Data.db\nindex/usertable-" + strconv.Itoa(gen+1) + "-Index.db\nsummary/usertable-" + strconv.Itoa(gen+1) + "-Summary.db\ntoc/usertable-" + strconv.Itoa(gen+1) + "-TOC.txt\n"))
+	_, err = file.Write([]byte("bloomFilter/usertable-" + strconv.Itoa(gen+1) + "-Filter.db\nmerkleTree/usertable-" + strconv.Itoa(gen+1) + "-Metadata.db\ndata/usertable-" + strconv.Itoa(gen+1) + "-Data.db\nindex/usertable-" + strconv.Itoa(gen+1) + "-Index.db\nsummary/usertable-" + strconv.Itoa(gen+1) + "-Summary.db\ntoc/usertable-" + strconv.Itoa(gen+1) + "-TOC.txt\n"))
+	if err != nil {
+		panic(err)
+	}
 	file.Close()
 
-	m.skipList = skipList.CreateSkipList()
+	// usertable-GEN-CountMinSketch.db
+	m.cms.SerializeCountMinSketch(gen + 1)
+	// usertable-GEN-HyperLogLog.db
+	m.hll.SerializeHLL(gen + 1)
+
+	m.skipList = SkipList.CreateSkipList(10,0,0)
 	m.wal.ResetWAL()
 }
 
-func CreateSSTable(elements []*skipList.SkipListNode, gen int) {
+func createSSTable(elements []*SkipList.SkipListNode, gen int) {
 	var offset uint64 = 0
 	var indexOffset uint64 = 0
-	fileData, err1 := os.OpenFile("data/usertable-"+strconv.Itoa(gen+1)+"-Data.db", os.O_WRONLY|os.O_CREATE, 0777)
+	fileData, err1 := os.OpenFile("Data/data/usertable-"+strconv.Itoa(gen)+"-Data.db", os.O_WRONLY|os.O_CREATE, 0777)
 	if err1 != nil {
 		panic(err1)
 	}
-	fileIndex, err2 := os.OpenFile("index/usertable-"+strconv.Itoa(gen+1)+"-Index.db", os.O_WRONLY|os.O_CREATE, 0777)
+	fileIndex, err2 := os.OpenFile("Data/index/usertable-"+strconv.Itoa(gen)+"-Index.db", os.O_WRONLY|os.O_CREATE, 0777)
 	if err2 != nil {
 		panic(err2)
 	}
-	fileSummary, err3 := os.OpenFile("summary/usertable-"+strconv.Itoa(gen+1)+"-Summary.db", os.O_WRONLY|os.O_CREATE, 0777)
+	fileSummary, err3 := os.OpenFile("Data/summary/usertable-"+strconv.Itoa(gen)+"-Summary.db", os.O_WRONLY|os.O_CREATE, 0777)
 	if err3 != nil {
 		panic(err3)
 	}
@@ -163,8 +229,14 @@ func CreateSSTable(elements []*skipList.SkipListNode, gen int) {
 	key_final2 := make([]byte, 8)
 	ukey2 := math.Float64bits(last)
 	binary.LittleEndian.PutUint64(key_final2, ukey2)
-	fileSummary.Write(key_final1)
-	fileSummary.Write(key_final2)
+	_, err := fileSummary.Write(key_final1)
+	if err != nil {
+		panic(err)
+	}
+	_, err = fileSummary.Write(key_final2)
+	if err != nil {
+		panic(err)
+	}
 
 	for _, element := range elements {
 		// START - write to data
@@ -221,6 +293,10 @@ func CreateSSTable(elements []*skipList.SkipListNode, gen int) {
 		indexOffset += indexSize
 		// END - write summary elements
 
+		fileData.Close()
+		fileIndex.Close()
+		fileSummary.Close()
+
 	}
 }
 
@@ -229,7 +305,7 @@ func CRC32(data []byte) uint32 {
 }
 
 func findCurrentGeneration() int {
-	files, _ := ioutil.ReadDir("data")
+	files, _ := ioutil.ReadDir("Data/data")
 	maxName := 0
 	for _, f := range files {
 		str := f.Name()
@@ -247,10 +323,4 @@ func (m Memtable) Finish() {
 	m.wal.Finish()
 }
 
-func main() {
 
-	memtable := createMemtable()
-	fmt.Println(memtable)
-	memtable.Finish()
-
-}
