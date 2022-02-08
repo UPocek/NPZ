@@ -1,0 +1,11 @@
+wal_size: 5
+wal_lwm: 3
+memtable_size: 10
+memtable_threshold: 70
+cache_max_size: 5
+lsm_max_lvl: 3
+lsm_merge_threshold: 2
+skiplist_max_height: 10
+hll_precision: 4
+tokenbucket_size: 100
+tokenbucket_interval: 60
