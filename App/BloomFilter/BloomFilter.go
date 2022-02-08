@@ -40,6 +40,7 @@ func (b *BloomFilter) AddElement(element string) {
 		b.hashFunctions[j].Reset()
 		b.hashFunctions[j].Write([]byte(element))
 		i := b.hashFunctions[j].Sum32() % uint32(b.M)
+		b.hashFunctions[j].Reset()
 		b.BitSet[i] = 1
 	}
 
@@ -50,6 +51,7 @@ func (b *BloomFilter) IsElementInBloomFilter(element string) bool {
 		b.hashFunctions[j].Reset()
 		b.hashFunctions[j].Write([]byte(element))
 		i := b.hashFunctions[j].Sum32() % uint32(b.M)
+		b.hashFunctions[j].Reset()
 		if b.BitSet[i] == 0 {
 			return false
 		}
@@ -57,8 +59,8 @@ func (b *BloomFilter) IsElementInBloomFilter(element string) bool {
 	return true
 }
 
-func (b *BloomFilter) SerializeBloomFilter(gen int) {
-	file, err := os.Create("Data/bloomFilter/usertable-" + strconv.Itoa(gen) + "-Filter.db")
+func (b *BloomFilter) SerializeBloomFilter(gen, lvl int) {
+	file, err := os.Create("Data/bloomFilter/usertable-lvl=" + strconv.Itoa(lvl) + "-gen=" + strconv.Itoa(gen) + "-Filter.db")
 	if err != nil {
 		panic(err)
 	}
@@ -67,14 +69,11 @@ func (b *BloomFilter) SerializeBloomFilter(gen int) {
 	if err != nil {
 		panic(err)
 	}
-	err = file.Close()
-	if err != nil {
-		panic(err)
-	}
+	file.Close()
 }
 
-func DeserializeBloomFilter(gen int) BloomFilter {
-	file, err := os.OpenFile("Data/bloomFilter/usertable-"+strconv.Itoa(gen)+"-Filter.db", os.O_RDWR, 0777)
+func DeserializeBloomFilter(gen, lvl int) BloomFilter {
+	file, err := os.OpenFile("Data/bloomFilter/usertable-lvl="+strconv.Itoa(lvl)+"-gen="+strconv.Itoa(gen)+"-Filter.db", os.O_RDWR, 0777)
 	if err != nil {
 		panic(err)
 	}
@@ -115,9 +114,6 @@ func main() {
 
 	b1 := CreateBloomFilter(100, 0.05)
 	b1.AddElement("Pepermint")
-	b1.AddElement("Sun")
-	b1.AddElement("Ice")
-	b1.AddElement("Happy")
 	fmt.Println(b1.IsElementInBloomFilter("Pepermint"))
 
 }

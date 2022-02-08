@@ -18,33 +18,31 @@ const (
 )
 
 type HLL struct {
-	M uint32 //duzina niza
-	P uint8  //preciznost
-	Ts uint
-	Reg []uint8 // baketi
+	M            uint32 //duzina niza
+	P            uint8  //preciznost
+	Ts           uint
+	Reg          []uint8 // baketi
 	hashFunction hash.Hash32
 }
 
-func CreateHLL(p uint8) HLL {
+func CreateHLL(p uint8) *HLL {
 	hll := HLL{P: p}
 
 	hll.M, hll.Reg = createBuckets(hll.P)
 	hll.hashFunction, hll.Ts = createHashFunction()
 
-	return hll
+	return &hll
 }
 
 func (hll *HLL) AddElement(key string) {
 	hll.hashFunction.Reset()
-	_, err := hll.hashFunction.Write([]byte(key))
-	if err != nil {
-		panic(err)
-	}
+	hll.hashFunction.Write([]byte(key))
 	i := hll.hashFunction.Sum32()
 	n := bits.TrailingZeros32(i)
 	i = i >> (32 - hll.P)
 
 	hll.Reg[i] = uint8(n)
+
 }
 
 func createBuckets(p uint8) (uint32, []uint8) {
@@ -88,8 +86,8 @@ func (hll *HLL) Estimate() float64 {
 	return estimation
 }
 
-func (hll HLL) SerializeHLL(gen int) {
-	file, err := os.Create("Data/hyperLogLog/usertable-" + strconv.Itoa(gen) + "-HyperLogLog.db")
+func (hll HLL) SerializeHLL(gen, lvl int) {
+	file, err := os.Create("Data/hyperLogLog/usertable-lvl=" + strconv.Itoa(lvl) + "-gen=" + strconv.Itoa(gen) + "-HyperLogLog.db")
 	if err != nil {
 		panic(err)
 	}
@@ -98,14 +96,11 @@ func (hll HLL) SerializeHLL(gen int) {
 	if err != nil {
 		panic(err)
 	}
-	err = file.Close()
-	if err != nil {
-		panic(err)
-	}
+	file.Close()
 }
 
-func DeserializeHLL(gen int) HLL {
-	file, err := os.OpenFile("Data/hyperLogLog/usertable-"+strconv.Itoa(gen)+"-HyperLogLog.db", os.O_RDWR, 0777)
+func DeserializeHLL(gen, lvl int) HLL {
+	file, err := os.OpenFile("Data/hyperLogLog/usertable-lvl="+strconv.Itoa(lvl)+"-gen="+strconv.Itoa(gen)+"-HyperLogLog.db", os.O_RDWR, 0777)
 	if err != nil {
 		panic(err)
 	}
@@ -116,10 +111,7 @@ func DeserializeHLL(gen int) HLL {
 		panic(err)
 	}
 	hll.hashFunction = murmur3.New32WithSeed(uint32(hll.Ts))
-	err = file.Close()
-	if err != nil {
-		panic(err)
-	}
+	file.Close()
 	return hll
 }
 
