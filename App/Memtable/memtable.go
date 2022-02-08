@@ -37,7 +37,7 @@ type Memtable struct {
 func CreateMemtable(data map[string]int, fromYaml bool) *Memtable {
 	var (
 		walSegmentSize, walLWM, memtableSize, memtableThreshold, lsmMaxLevel, lsmMergeThreshold, skiplistMaxHeight, hllPrecision int     = 5, 3, 10, 70, 3, 2, 10, 4
-		cmsEpsilon, cmsDelta                                                                                                                   float64 = 0.01, 0.01
+		cmsEpsilon, cmsDelta                                                                                                     float64 = 0.01, 0.01
 	)
 	if fromYaml {
 		walSegmentSize = data["wal_size"]
@@ -61,14 +61,11 @@ func CreateMemtable(data map[string]int, fromYaml bool) *Memtable {
 	return &memtable
 }
 
-
 func (m *Memtable) RecreateWALandSkipList() {
 	writtenSegments := 0
-	var index uint8 = 0
 
 	files, _ := ioutil.ReadDir("Data/wal/segments")
 	for _, f := range files {
-		index += 1
 		str := f.Name()
 		file, _ := os.OpenFile("Data/wal/segments/"+str, os.O_RDONLY, 0777)
 		file.Seek(0, 0)
@@ -128,12 +125,9 @@ func (m *Memtable) RecreateWALandSkipList() {
 				}
 			}
 		}
+		m.wal.SetCurrentSize(uint8(writtenSegments))
 		file.Close()
 	}
-	if index > m.wal.GetLMW() {
-		m.wal.DeleteSegments()
-	}
-
 }
 
 func (m *Memtable) Write(key string, value []byte) bool {
@@ -229,8 +223,8 @@ func (m *Memtable) Compression(whatLvl int) {
 			index2.Read(jLenBytes)
 			jLen := binary.LittleEndian.Uint64(jLenBytes)
 
-			i := make([]byte, iLen + 8)
-			j := make([]byte, jLen + 8)
+			i := make([]byte, iLen+8)
+			j := make([]byte, jLen+8)
 			_, err1 := index1.Read(i)
 			_, err2 := index2.Read(j)
 
@@ -273,7 +267,7 @@ func (m *Memtable) Compression(whatLvl int) {
 					newBloom.AddElement(string(key1))
 					newSkipList.AddElement(string(key1), value1)
 
-					index2.Seek(-16 - int64(jLen), 1)
+					index2.Seek(-16-int64(jLen), 1)
 				} else {
 					newCms.AddElement(string(key2))
 					newHll.AddElement(string(key2))
@@ -281,7 +275,7 @@ func (m *Memtable) Compression(whatLvl int) {
 					newBloom.AddElement(string(key2))
 					newSkipList.AddElement(string(key2), value2)
 
-					index1.Seek(-16 - int64(iLen), 1)
+					index1.Seek(-16-int64(iLen), 1)
 				}
 			}
 		}
@@ -290,7 +284,7 @@ func (m *Memtable) Compression(whatLvl int) {
 			index1.Read(iLenBytes)
 			iLen := binary.LittleEndian.Uint64(iLenBytes)
 
-			i := make([]byte, iLen + 8)
+			i := make([]byte, iLen+8)
 			_, err1 := index1.Read(i)
 			if err1 == io.EOF {
 				break
@@ -314,7 +308,7 @@ func (m *Memtable) Compression(whatLvl int) {
 
 			jLen := binary.LittleEndian.Uint64(jLenBytes)
 
-			j := make([]byte, jLen + 8)
+			j := make([]byte, jLen+8)
 			_, err1 := index2.Read(j)
 			if err1 == io.EOF {
 				break
@@ -323,7 +317,6 @@ func (m *Memtable) Compression(whatLvl int) {
 			offset2 := binary.LittleEndian.Uint64(j[jLen:])
 
 			file1.Seek(int64(offset2), 0)
-
 
 			_, _, key1, value1 := PrepareData(file2)
 
@@ -465,7 +458,6 @@ func createSSTable(elements []*SkipList.SkipListNode, gen, lvl int) {
 	first := elements[0].GetKey()
 	last := elements[len(elements)-1].GetKey()
 
-
 	var firstSize uint64 = uint64(len(first))
 	firstSize_final := make([]byte, 8)
 	binary.LittleEndian.PutUint64(firstSize_final, firstSize)
@@ -491,7 +483,6 @@ func createSSTable(elements []*SkipList.SkipListNode, gen, lvl int) {
 	if err != nil {
 		panic(err)
 	}
-
 
 	for _, element := range elements {
 		// START - write to data
@@ -545,8 +536,6 @@ func createSSTable(elements []*SkipList.SkipListNode, gen, lvl int) {
 		fileSummary.Write(index_offset_final)
 		indexOffset += indexSize
 		// END - write summary elements
-
-
 
 	}
 

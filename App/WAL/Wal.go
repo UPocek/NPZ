@@ -44,6 +44,10 @@ func (wal *WAL) SetSegmentSize(size uint8) {
 	wal.segmentSize = size
 }
 
+func (wal *WAL) SetCurrentSize(n uint8) {
+	wal.currentSegment = n
+}
+
 func (wal *WAL) SetLWM(lwm uint8) {
 	wal.lwm = lwm
 }
