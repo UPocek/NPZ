@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Memtable struct {
@@ -81,7 +82,9 @@ func (m *Memtable) RecreateWALandSkipList() {
 
 			writtenSegments += 1
 
-			file.Seek(8, 1)
+			wt := make([]byte, 8)
+			file.Read(wt)
+			walTimestamp := binary.LittleEndian.Uint64(wt)
 
 			whatToDo := make([]byte, 1)
 			file.Read(whatToDo)
@@ -100,28 +103,18 @@ func (m *Memtable) RecreateWALandSkipList() {
 			file.Read(value)
 
 			if CRC32(value) != c {
-				panic("NEEEEEEE")
+				panic("Nece da oce")
 			}
-			if whatToDo[0] == 0 {
+			errNew, isNew := m.skipList.UpdateTimestamp(string(key), value, int64(walTimestamp), whatToDo[0])
+			if isNew {
+				m.currentSize += 1
 				m.cms.AddElement(string(key))
 				m.hll.AddElement(string(key))
-				errNew, isNew := m.skipList.AddElement(string(key), value)
-				if errNew != nil {
-					panic(err)
-				}
-				if isNew {
-					m.currentSize += 1
-				}
-
-			} else {
-				s := m.skipList.RemoveElement(string(key))
-				if s == 0 {
-					continue
-				} else if s == 1 {
-					isSomewhere, _ := m.Get(string(key))
-					if isSomewhere != false {
-						m.skipList.AddDeletedElement(string(key), value)
-					}
+			}
+			if errNew != nil {
+				isSomewhere, _ := m.Get(string(key))
+				if isSomewhere != false {
+					m.skipList.AddDeletedElement(string(key), value, int64(walTimestamp))
 				}
 			}
 		}
@@ -167,7 +160,9 @@ func (m *Memtable) Delete(key string, value []byte) bool {
 			} else if s == 1 {
 				isSomewhere, _ := m.Get(key)
 				if isSomewhere != false {
-					err := m.skipList.AddDeletedElement(key, value)
+					now := time.Now()
+					timestamp := now.Unix()
+					err := m.skipList.AddDeletedElement(key, value, timestamp)
 					if err != nil {
 						panic(err)
 					}
@@ -189,10 +184,9 @@ func (m *Memtable) Get(key string) (bool, []byte) {
 		return true, valueNode.GetValue()
 	}
 	return false, []byte("Nema nista")
-
 }
 
-func (m *Memtable) Compression(whatLvl int) {
+func (m *Memtable) Compactions(whatLvl int) {
 	current := 0
 	for current < m.lsm[1] {
 
@@ -248,13 +242,13 @@ func (m *Memtable) Compression(whatLvl int) {
 					if writeTime1 > writeTime2 {
 						newCms.AddElement(string(key1))
 						newHll.AddElement(string(key1))
-						newMerkle.AddElement(key1)
+						newMerkle.AddElement(value1)
 						newBloom.AddElement(string(key1))
 						newSkipList.AddElement(string(key1), value1)
 					} else {
 						newCms.AddElement(string(key2))
 						newHll.AddElement(string(key2))
-						newMerkle.AddElement(key2)
+						newMerkle.AddElement(value2)
 						newBloom.AddElement(string(key2))
 						newSkipList.AddElement(string(key2), value2)
 					}
@@ -263,7 +257,7 @@ func (m *Memtable) Compression(whatLvl int) {
 				if string(key1) < string(key2) {
 					newCms.AddElement(string(key1))
 					newHll.AddElement(string(key1))
-					newMerkle.AddElement(key1)
+					newMerkle.AddElement(value1)
 					newBloom.AddElement(string(key1))
 					newSkipList.AddElement(string(key1), value1)
 
@@ -271,7 +265,7 @@ func (m *Memtable) Compression(whatLvl int) {
 				} else {
 					newCms.AddElement(string(key2))
 					newHll.AddElement(string(key2))
-					newMerkle.AddElement(key2)
+					newMerkle.AddElement(value2)
 					newBloom.AddElement(string(key2))
 					newSkipList.AddElement(string(key2), value2)
 
@@ -298,7 +292,7 @@ func (m *Memtable) Compression(whatLvl int) {
 
 			newCms.AddElement(string(key1))
 			newHll.AddElement(string(key1))
-			newMerkle.AddElement(key1)
+			newMerkle.AddElement(value1)
 			newBloom.AddElement(string(key1))
 			newSkipList.AddElement(string(key1), value1)
 		}
@@ -322,7 +316,7 @@ func (m *Memtable) Compression(whatLvl int) {
 
 			newCms.AddElement(string(key1))
 			newHll.AddElement(string(key1))
-			newMerkle.AddElement(key1)
+			newMerkle.AddElement(value1)
 			newBloom.AddElement(string(key1))
 			newSkipList.AddElement(string(key1), value1)
 		}
@@ -363,7 +357,7 @@ func (m *Memtable) Compression(whatLvl int) {
 	}
 	nn := FindLSMGeneration(whatLvl + 1)
 	if nn == m.lsm[1] && whatLvl+1 < m.lsm[0] {
-		m.Compression(whatLvl + 1)
+		m.Compactions(whatLvl + 1)
 	}
 }
 
@@ -399,8 +393,7 @@ func (m *Memtable) Flush() {
 	merkle := MerkleTree.MerkleTree{}
 	bloom := BloomFilter.CreateBloomFilter(len(elements), 0.01)
 	for _, el := range elements {
-		kk := el.GetKey()
-		merkle.AddElement([]byte(kk))
+		merkle.AddElement(el.GetValue())
 		bloom.AddElement(el.GetKey())
 	}
 	// usertable-lvl=LVL-gen=GEN-Filter.db
@@ -434,9 +427,8 @@ func (m *Memtable) Flush() {
 	m.wal = m.wal.ResetWAL()
 
 	if gen+1 == m.lsm[1] {
-		m.Compression(1)
+		m.Compactions(1)
 	}
-
 }
 
 func createSSTable(elements []*SkipList.SkipListNode, gen, lvl int) {
@@ -536,7 +528,6 @@ func createSSTable(elements []*SkipList.SkipListNode, gen, lvl int) {
 		fileSummary.Write(index_offset_final)
 		indexOffset += indexSize
 		// END - write summary elements
-
 	}
 
 	fileData.Close()
@@ -586,25 +577,6 @@ func FindLSMGeneration(whatLvl int) int {
 		}
 	}
 	return maxName
-}
-
-func findLevels() [][]int {
-	files, _ := ioutil.ReadDir("Data/data")
-	data := make([][]int, 0, len(files))
-	for _, f := range files {
-		str := f.Name()
-		re := regexp.MustCompile("-gen=\\d+-Data.db")
-		lvl := re.Split(str, -1)
-		lvl = strings.Split(lvl[0], "usertable-lvl=")
-		l, _ := strconv.Atoi(lvl[1])
-		re = regexp.MustCompile("usertable-lvl=\\d+-gen=")
-		gen := re.Split(str, -1)
-		gen = strings.Split(gen[1], "-Data.db")
-		g, _ := strconv.Atoi(gen[0])
-		newElement := []int{l, g}
-		data = append(data, newElement)
-	}
-	return data
 }
 
 func removeOldFiles(whatLvl, current int) {

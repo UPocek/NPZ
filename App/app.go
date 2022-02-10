@@ -15,8 +15,8 @@ import (
 
 type App struct {
 	memtable *Memtable.Memtable
-	cache *Cache.Cache
-	data map[string]int
+	cache    *Cache.Cache
+	data     map[string]int
 }
 
 func CreateApp() App {
@@ -58,7 +58,6 @@ func (app *App) Get(key string) (bool, []byte) {
 		return true, value
 	}
 
-
 	fmt.Println(app.data["lsm_max_lvl"])
 	for i := 1; i <= app.data["lsm_max_lvl"]; i++ {
 		for j := 1; j <= Memtable.FindLSMGeneration(i); i++ {
@@ -94,7 +93,7 @@ func (app *App) Get(key string) (bool, []byte) {
 						}
 						keyLen := binary.LittleEndian.Uint64(keyLenBytes)
 
-						buff := make([]byte, keyLen + 8)
+						buff := make([]byte, keyLen+8)
 						fileSummary.Read(buff)
 						keyBytes := buff[:keyLen]
 						indexPosition := binary.LittleEndian.Uint64(buff[keyLen:])
@@ -102,13 +101,13 @@ func (app *App) Get(key string) (bool, []byte) {
 							fileSummary.Close()
 							fmt.Println("SSTable nasao")
 							fileIndex, _ := os.OpenFile("Data/index/usertable-lvl="+strconv.Itoa(i)+"-gen="+strconv.Itoa(j)+"-Index.db", os.O_RDONLY, 0777)
-							fileIndex.Seek(int64(indexPosition),0)
+							fileIndex.Seek(int64(indexPosition), 0)
 
 							keyLenIndexBytes := make([]byte, 8)
 							fileIndex.Read(keyLenIndexBytes)
 							keyLenIndex := binary.LittleEndian.Uint64(keyLenIndexBytes)
 
-							buff2 := make([]byte, keyLenIndex + 8)
+							buff2 := make([]byte, keyLenIndex+8)
 							fileIndex.Read(buff2)
 							dataPosition := binary.LittleEndian.Uint64(buff2[keyLenIndex:])
 
@@ -122,7 +121,7 @@ func (app *App) Get(key string) (bool, []byte) {
 							//c := binary.LittleEndian.Uint32(crc)
 							//
 							//if Memtable.CRC32(value) != c {
-							//	panic("NEEEEEEE")
+							//	panic("Nece da oce")
 							//}
 
 							fileData.Seek(8, 1)
@@ -149,19 +148,14 @@ func (app *App) Get(key string) (bool, []byte) {
 							app.cache.AddElement(key, value)
 							return true, value
 						}
-
 					}
-
 				}
 			}
 		}
 	}
 	return false, []byte("Ne postoji")
-
-
 }
 
-
-func (app *App) Delete(key string, value []byte) (bool) {
+func (app *App) Delete(key string, value []byte) bool {
 	return app.memtable.Delete(key, value)
 }
