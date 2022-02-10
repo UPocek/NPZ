@@ -5,7 +5,6 @@ import (
 	"Projekat/App/Cache"
 	"Projekat/App/Memtable"
 	"encoding/binary"
-	"fmt"
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/ioutil"
@@ -46,25 +45,22 @@ func (app *App) Get(key string) (bool, []byte) {
 	var isThere bool
 	isThere, value = app.memtable.Get(key)
 	if isThere {
-		fmt.Println("Nasao memtable")
 		app.cache.AddElement(key, value)
 		return true, value
 	}
 
 	isThere, value = app.cache.GetElement(key)
 	if isThere {
-		fmt.Println("Nasao cache")
 		app.cache.AddElement(key, value)
 		return true, value
 	}
 
-	fmt.Println(app.data["lsm_max_lvl"])
 	for i := 1; i <= app.data["lsm_max_lvl"]; i++ {
 		for j := 1; j <= Memtable.FindLSMGeneration(i); i++ {
 			bloomFilter := BloomFilter.DeserializeBloomFilter(j, i)
 			isThere = bloomFilter.IsElementInBloomFilter(key)
 			if isThere {
-				fmt.Println("Bloom kaze potencijalno jeste" + strconv.Itoa(i) + strconv.Itoa(j))
+
 				fileSummary, _ := os.OpenFile("Data/summary/usertable-lvl="+strconv.Itoa(i)+"-gen="+strconv.Itoa(j)+"-Summary.db", os.O_RDONLY, 0777)
 
 				firstSizeBytes := make([]byte, 8)
@@ -81,10 +77,8 @@ func (app *App) Get(key string) (bool, []byte) {
 				lastIndexBytes := make([]byte, lastSize)
 				fileSummary.Read(lastIndexBytes)
 
-				fmt.Println(firstSize, string(firstIndexBytes), lastSize, string(lastIndexBytes))
-
 				if key >= string(firstIndexBytes) && key <= string(lastIndexBytes) {
-					fmt.Println("SSTable summary kaze da potencijalno jeste")
+					summeryStructure := make(map[string]uint64)
 					for {
 						keyLenBytes := make([]byte, 8)
 						_, err := fileSummary.Read(keyLenBytes)
@@ -97,57 +91,60 @@ func (app *App) Get(key string) (bool, []byte) {
 						fileSummary.Read(buff)
 						keyBytes := buff[:keyLen]
 						indexPosition := binary.LittleEndian.Uint64(buff[keyLen:])
-						if string(keyBytes) == key {
-							fileSummary.Close()
-							fmt.Println("SSTable nasao")
-							fileIndex, _ := os.OpenFile("Data/index/usertable-lvl="+strconv.Itoa(i)+"-gen="+strconv.Itoa(j)+"-Index.db", os.O_RDONLY, 0777)
-							fileIndex.Seek(int64(indexPosition), 0)
+						summeryStructure[string(keyBytes)] = indexPosition
+					}
+					fileSummary.Close()
 
-							keyLenIndexBytes := make([]byte, 8)
-							fileIndex.Read(keyLenIndexBytes)
-							keyLenIndex := binary.LittleEndian.Uint64(keyLenIndexBytes)
+					indexPosition, existInMap := summeryStructure[key]
+					if existInMap {
 
-							buff2 := make([]byte, keyLenIndex+8)
-							fileIndex.Read(buff2)
-							dataPosition := binary.LittleEndian.Uint64(buff2[keyLenIndex:])
+						fileIndex, _ := os.OpenFile("Data/index/usertable-lvl="+strconv.Itoa(i)+"-gen="+strconv.Itoa(j)+"-Index.db", os.O_RDONLY, 0777)
+						fileIndex.Seek(int64(indexPosition), 0)
 
-							fileIndex.Close()
+						keyLenIndexBytes := make([]byte, 8)
+						fileIndex.Read(keyLenIndexBytes)
+						keyLenIndex := binary.LittleEndian.Uint64(keyLenIndexBytes)
 
-							fileData, _ := os.OpenFile("Data/data/usertable-lvl="+strconv.Itoa(i)+"-gen="+strconv.Itoa(j)+"-Data.db", os.O_RDONLY, 0777)
-							fileData.Seek(int64(dataPosition), 0)
+						buff2 := make([]byte, keyLenIndex+8)
+						fileIndex.Read(buff2)
+						dataPosition := binary.LittleEndian.Uint64(buff2[keyLenIndex:])
 
-							crc := make([]byte, 4)
-							fileData.Read(crc)
-							//c := binary.LittleEndian.Uint32(crc)
-							//
-							//if Memtable.CRC32(value) != c {
-							//	panic("Nece da oce")
-							//}
+						fileIndex.Close()
 
-							fileData.Seek(8, 1)
+						fileData, _ := os.OpenFile("Data/data/usertable-lvl="+strconv.Itoa(i)+"-gen="+strconv.Itoa(j)+"-Data.db", os.O_RDONLY, 0777)
+						fileData.Seek(int64(dataPosition), 0)
 
-							whatToDo := make([]byte, 1)
-							fileData.Read(whatToDo)
-							if whatToDo[0] == 1 {
-								fmt.Println("Logicki obrisan")
-								return false, []byte("Ne postoji")
-							}
+						crc := make([]byte, 4)
+						fileData.Read(crc)
+						c := binary.LittleEndian.Uint32(crc)
 
-							keySize := make([]byte, 8)
-							fileData.Read(keySize)
-							n := binary.LittleEndian.Uint64(keySize)
 
-							valueSize := make([]byte, 8)
-							fileData.Read(valueSize)
-							mm := binary.LittleEndian.Uint64(valueSize)
 
-							keyData := make([]byte, n)
-							fileData.Read(keyData)
-							value = make([]byte, mm)
-							fileData.Read(value)
-							app.cache.AddElement(key, value)
-							return true, value
+						fileData.Seek(8, 1)
+
+						whatToDo := make([]byte, 1)
+						fileData.Read(whatToDo)
+						if whatToDo[0] == 1 {
+							return false, []byte("Podatak je logicki obrisan")
 						}
+
+						keySize := make([]byte, 8)
+						fileData.Read(keySize)
+						n := binary.LittleEndian.Uint64(keySize)
+
+						valueSize := make([]byte, 8)
+						fileData.Read(valueSize)
+						mm := binary.LittleEndian.Uint64(valueSize)
+
+						keyData := make([]byte, n)
+						fileData.Read(keyData)
+						value = make([]byte, mm)
+						fileData.Read(value)
+						if Memtable.CRC32(value) != c {
+							panic("Nece da oce")
+						}
+						app.cache.AddElement(key, value)
+						return true, value
 					}
 				}
 			}
