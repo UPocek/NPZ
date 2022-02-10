@@ -22,7 +22,9 @@ type SkipListNode struct {
 }
 
 func CreateSkipList(maxHeight int, height int, size int) *SkipList {
-	node := createNode("", []byte("none"), maxHeight+1)
+	now := time.Now()
+	timestamp := now.Unix()
+	node := createNode("", []byte("none"), maxHeight+1, timestamp)
 	return &SkipList{
 		maxHeight: maxHeight,
 		height:    height,
@@ -30,9 +32,7 @@ func CreateSkipList(maxHeight int, height int, size int) *SkipList {
 		head:      node,
 	}
 }
-func createNode(key string, val []byte, height int) *SkipListNode {
-	now := time.Now()
-	timestamp := now.Unix()
+func createNode(key string, val []byte, height int, timestamp int64) *SkipListNode {
 	return &SkipListNode{
 		key:       key,
 		value:     val,
@@ -106,15 +106,15 @@ func (sl *SkipList) AddElement(key string, value []byte) (error, bool) {
 		if levels > sl.height {
 			sl.height = levels
 		}
-		node := createNode(key, value, levels+1)
+		now := time.Now()
+		timestamp := now.Unix()
+		node := createNode(key, value, levels+1, timestamp)
 		curr := sl.head
 		if curr.next[0] == nil {
 			sl.addFirstNode(node, levels)
 		} else {
 			sl.addOnLevels(node, levels)
-
 		}
-
 		sl.size += 1
 		return nil, true
 	} else {
@@ -123,6 +123,43 @@ func (sl *SkipList) AddElement(key string, value []byte) (error, bool) {
 		node.value = value
 		node.tombstone = false
 		node.timestamp = timestamp
+		return nil, false
+	}
+}
+
+func (sl *SkipList) UpdateTimestamp(key string, value []byte, ts int64, whatToDo byte) (error, bool) {
+	if whatToDo == 0 {
+		node := sl.FindElement(key)
+		if node == nil {
+			levels := sl.roll()
+			if levels > sl.height {
+				sl.height = levels
+			}
+			node := createNode(key, value, levels+1, ts)
+			curr := sl.head
+			if curr.next[0] == nil {
+				sl.addFirstNode(node, levels)
+			} else {
+				sl.addOnLevels(node, levels)
+			}
+			sl.size += 1
+			return nil, true
+		} else {
+			node.value = value
+			node.tombstone = false
+			node.timestamp = ts
+			return nil, false
+		}
+	} else {
+		node := sl.FindElement(key)
+		if node == nil {
+			return fmt.Errorf("Potrebna provera"), false
+		}
+		if node.tombstone == false {
+			node.tombstone = true
+			node.timestamp = ts
+			return nil, false
+		}
 		return nil, false
 	}
 }
@@ -173,11 +210,11 @@ func (skip *SkipList) LastLevel() []*SkipListNode {
 	return res
 }
 
-func (sl *SkipList) AddDeletedElement(key string, value []byte) error {
+func (sl *SkipList) AddDeletedElement(key string, value []byte, ts int64) error {
 	node := sl.FindElement(key)
 	if node != nil {
 		levels := sl.roll()
-		node := createNode(key, value, levels+1)
+		node := createNode(key, value, levels+1, ts)
 		node.tombstone = true
 		curr := sl.head
 		if curr.next[0] == nil {
@@ -189,11 +226,9 @@ func (sl *SkipList) AddDeletedElement(key string, value []byte) error {
 		sl.size += 1
 		return nil
 	} else {
-		now := time.Now()
-		timestamp := now.Unix()
 		node.value = value
 		node.tombstone = true
-		node.timestamp = timestamp
+		node.timestamp = ts
 		return nil
 	}
 }

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="ALL" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="79c98e87-7257-4b29-a1a1-8232db32f977" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/NPZ.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/NPZ.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/BloomFilter/BloomFilter.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/BloomFilter/BloomFilter.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/CMS/CountMinSketch.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/CMS/CountMinSketch.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/Cache/cache.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/Cache/cache.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/HLL/HyperLogLog.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/HLL/HyperLogLog.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/Memtable/memtable.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/Memtable/memtable.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/MerkleTree/merkleTree.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/MerkleTree/merkleTree.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/SkipList/SkipList1.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/SkipList/SkipList1.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/TokenBucket/TokenBucket.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/TokenBucket/TokenBucket.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/WAL/Wal.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/WAL/Wal.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/app.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/app.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Data/bloomFilter/testbf.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Data/countMinSketch/testcms.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Data/data/testsstdata.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Data/hyperLogLog/testhll.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Data/index/testsstindex.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Data/merkleTree/testmerkle.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Data/summary/testsstsummary.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Data/toc/testtoc.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Data/wal/segments/wal_1.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="GOROOT" url="file:///usr/local/go" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GoLibraries">
+    <option name="indexEntireGoPath" value="false" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="24uqiCTIpUkVYRuDGTcm1w7tYsi" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="go.format.on.save.advertiser.fired" value="true" />
+    <property name="go.formatter.settings.were.checked" value="true" />
+    <property name="go.import.settings.migrated" value="true" />
+    <property name="go.modules.go.list.on.any.changes.was.set" value="true" />
+    <property name="go.sdk.automatically.set" value="true" />
+    <property name="go.watchers.conflict.with.on.save.actions.check.performed" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+  </component>
+  <component name="RunManager">
+    <configuration name="go build Projekat" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="NPZ" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="Projekat" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/main.go" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Build.go build Projekat" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VgoProject">
+    <integration-enabled>true</integration-enabled>
+  </component>
+</project>
