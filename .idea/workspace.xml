@@ -5,35 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="79c98e87-7257-4b29-a1a1-8232db32f977" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/NPZ.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/NPZ.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/BloomFilter/BloomFilter.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/BloomFilter/BloomFilter.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/CMS/CountMinSketch.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/CMS/CountMinSketch.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/Cache/cache.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/Cache/cache.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/HLL/HyperLogLog.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/HLL/HyperLogLog.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/App/Memtable/memtable.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/Memtable/memtable.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/MerkleTree/merkleTree.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/MerkleTree/merkleTree.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/SkipList/SkipList1.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/SkipList/SkipList1.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/TokenBucket/TokenBucket.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/TokenBucket/TokenBucket.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/WAL/Wal.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/WAL/Wal.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/app.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/app.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/bloomFilter/testbf.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/countMinSketch/testcms.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/data/testsstdata.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/hyperLogLog/testhll.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/index/testsstindex.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/merkleTree/testmerkle.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/summary/testsstsummary.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/toc/testtoc.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/wal/segments/wal_1.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

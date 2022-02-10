@@ -186,7 +186,7 @@ func (m *Memtable) Get(key string) (bool, []byte) {
 	return false, []byte("Nema nista")
 }
 
-func (m *Memtable) Compression(whatLvl int) {
+func (m *Memtable) Compactions(whatLvl int) {
 	current := 0
 	for current < m.lsm[1] {
 
@@ -357,7 +357,7 @@ func (m *Memtable) Compression(whatLvl int) {
 	}
 	nn := FindLSMGeneration(whatLvl + 1)
 	if nn == m.lsm[1] && whatLvl+1 < m.lsm[0] {
-		m.Compression(whatLvl + 1)
+		m.Compactions(whatLvl + 1)
 	}
 }
 
@@ -427,7 +427,7 @@ func (m *Memtable) Flush() {
 	m.wal = m.wal.ResetWAL()
 
 	if gen+1 == m.lsm[1] {
-		m.Compression(1)
+		m.Compactions(1)
 	}
 }
 
