@@ -180,7 +180,6 @@ func (m *Memtable) Delete(key string, value []byte) bool {
 func (m *Memtable) Get(key string) (bool, []byte) {
 	valueNode := m.skipList.FindElement(key)
 	if valueNode != nil {
-		fmt.Println("Vratio memtable")
 		return true, valueNode.GetValue()
 	}
 	return false, []byte("Nema nista")

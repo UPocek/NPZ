@@ -1,6 +1,0 @@
-bloomFilter/usertable-lvl=3-gen=1-Filter.db
-merkleTree/usertable-lvl=3-gen=1-Metadata.db
-data/usertable-lvl=2-gen=1-Data.db
-index/usertable-lvl=2-gen=1-Index.db
-summary/usertable-lvl=2-gen=1-Summary.db
-toc/usertable-lvl=2-gen=1-TOC.txt

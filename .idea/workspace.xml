@@ -7,13 +7,14 @@
     <list default="true" id="79c98e87-7257-4b29-a1a1-8232db32f977" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/App/Memtable/memtable.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/Memtable/memtable.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/app.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/app.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="GOROOT" url="file:///usr/local/go" />
+  <component name="GOROOT" url="file://C:/Program Files/Go" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
