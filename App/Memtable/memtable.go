@@ -3,7 +3,6 @@ package Memtable
 import (
 	"Projekat/App/BloomFilter"
 	"Projekat/App/CMS"
-	"Projekat/App/Cache"
 	"Projekat/App/HLL"
 	"Projekat/App/MerkleTree"
 	"Projekat/App/SkipList"
@@ -31,7 +30,6 @@ type Memtable struct {
 	cms         *CMS.CountMinSketch
 	hll         *HLL.HLL
 	wal         *WAL.WAL
-	cache       *Cache.Cache
 	tokenBucket *TokenBucket.TokenBucket
 }
 
@@ -112,10 +110,7 @@ func (m *Memtable) RecreateWALandSkipList() {
 				m.hll.AddElement(string(key))
 			}
 			if errNew != nil {
-				isSomewhere, _ := m.Get(string(key))
-				if isSomewhere != false {
-					m.skipList.AddDeletedElement(string(key), value, int64(walTimestamp))
-				}
+				m.skipList.AddDeletedElement(string(key), value, int64(walTimestamp))
 			}
 		}
 		m.wal.SetCurrentSize(uint8(writtenSegments))
@@ -149,17 +144,16 @@ func (m *Memtable) Write(key string, value []byte) bool {
 	return false
 }
 
-func (m *Memtable) Delete(key string, value []byte) bool {
+func (m *Memtable) Delete(key string, value []byte, answer bool) bool {
 	if m.tokenBucket.Update() {
-		success := m.wal.DeleteElement(key, value)
-		if success {
-			s := m.skipList.RemoveElement(key)
-			m.cache.RemoveElement(key)
-			if s == 0 {
-				return true
-			} else if s == 1 {
-				isSomewhere, _ := m.Get(key)
-				if isSomewhere != false {
+		if answer {
+			success := m.wal.DeleteElement(key, value)
+			if success {
+				s := m.skipList.RemoveElement(key)
+
+				if s == 0 {
+					return true
+				} else if s == 1 {
 					now := time.Now()
 					timestamp := now.Unix()
 					err := m.skipList.AddDeletedElement(key, value, timestamp)
@@ -221,7 +215,11 @@ func (m *Memtable) Compactions(whatLvl int) {
 			_, err1 := index1.Read(i)
 			_, err2 := index2.Read(j)
 
-			if err1 == io.EOF || err2 == io.EOF {
+			if err1 == io.EOF {
+				//index2.Seek(-16-int64(jLen), 1)
+				break
+			}else if err2 == io.EOF{
+				//index1.Seek(-16-int64(iLen), 1)
 				break
 			}
 
@@ -309,7 +307,7 @@ func (m *Memtable) Compactions(whatLvl int) {
 
 			offset2 := binary.LittleEndian.Uint64(j[jLen:])
 
-			file1.Seek(int64(offset2), 0)
+			file2.Seek(int64(offset2), 0)
 
 			_, _, key1, value1 := PrepareData(file2)
 

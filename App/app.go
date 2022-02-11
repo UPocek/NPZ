@@ -93,7 +93,6 @@ func (app *App) Get(key string) (bool, []byte) {
 						indexPosition := binary.LittleEndian.Uint64(buff[keyLen:])
 						summeryStructure[string(keyBytes)] = indexPosition
 					}
-					fileSummary.Close()
 
 					indexPosition, existInMap := summeryStructure[key]
 					if existInMap {
@@ -117,8 +116,6 @@ func (app *App) Get(key string) (bool, []byte) {
 						crc := make([]byte, 4)
 						fileData.Read(crc)
 						c := binary.LittleEndian.Uint32(crc)
-
-
 
 						fileData.Seek(8, 1)
 
@@ -147,6 +144,7 @@ func (app *App) Get(key string) (bool, []byte) {
 						return true, value
 					}
 				}
+				fileSummary.Close()
 			}
 		}
 	}
@@ -154,5 +152,7 @@ func (app *App) Get(key string) (bool, []byte) {
 }
 
 func (app *App) Delete(key string, value []byte) bool {
-	return app.memtable.Delete(key, value)
+	app.cache.RemoveElement(key)
+	answer, _ := app.Get(key)
+	return app.memtable.Delete(key, value, answer)
 }
