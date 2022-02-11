@@ -169,10 +169,7 @@ func (dll *DoublyLinkedList) addElement(key string, value []byte) {
 
 func (dll *DoublyLinkedList) removeLast() {
 	dll.tail.prev.prev.next = dll.tail
-	temp := dll.tail.prev
 	dll.tail.prev = dll.tail.prev.prev
-	temp.next = nil
-	temp.prev.prev = nil
 }
 
 func (dll *DoublyLinkedList) removeElement(key string) {

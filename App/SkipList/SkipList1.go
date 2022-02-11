@@ -212,7 +212,7 @@ func (skip *SkipList) LastLevel() []*SkipListNode {
 
 func (sl *SkipList) AddDeletedElement(key string, value []byte, ts int64) error {
 	node := sl.FindElement(key)
-	if node != nil {
+	if node == nil {
 		levels := sl.roll()
 		node := createNode(key, value, levels+1, ts)
 		node.tombstone = true
