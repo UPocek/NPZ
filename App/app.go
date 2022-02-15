@@ -56,7 +56,12 @@ func (app *App) Get(key string) (bool, []byte) {
 	}
 
 	for i := 1; i <= app.data["lsm_max_lvl"]; i++ {
-		for j := 1; j <= Memtable.FindLSMGeneration(i); i++ {
+		maxGen := Memtable.FindLSMGeneration(i)
+		for j := 1; j <= Memtable.FindLSMGeneration(i); j++ {
+			gen := j
+			if i == app.data["lsm_max_lvl"]{
+				j = maxGen - j + 1
+			}
 			bloomFilter := BloomFilter.DeserializeBloomFilter(j, i)
 			isThere = bloomFilter.IsElementInBloomFilter(key)
 			if isThere {
@@ -122,6 +127,8 @@ func (app *App) Get(key string) (bool, []byte) {
 						whatToDo := make([]byte, 1)
 						fileData.Read(whatToDo)
 						if whatToDo[0] == 1 {
+							fileData.Close()
+							fileSummary.Close()
 							return false, []byte("Podatak je logicki obrisan")
 						}
 
@@ -141,18 +148,21 @@ func (app *App) Get(key string) (bool, []byte) {
 							panic("Nece da oce")
 						}
 						app.cache.AddElement(key, value)
+						fileData.Close()
+						fileSummary.Close()
 						return true, value
 					}
 				}
 				fileSummary.Close()
 			}
+			j = gen
 		}
 	}
 	return false, []byte("Ne postoji")
 }
 
 func (app *App) Delete(key string, value []byte) bool {
-	app.cache.RemoveElement(key)
 	answer, _ := app.Get(key)
+	app.cache.RemoveElement(key)
 	return app.memtable.Delete(key, value, answer)
 }
