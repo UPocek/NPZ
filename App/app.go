@@ -63,6 +63,7 @@ func (app *App) Get(key string) (bool, []byte) {
 	for i := 1; i <= app.data["lsm_max_lvl"]; i++ {
 		maxGen := Memtable.FindLSMGeneration(i)
 		for j := 1; j <= maxGen; j++ {
+
 			gen := j
 			if i == app.data["lsm_max_lvl"]{
 				j = maxGen - j + 1
@@ -132,8 +133,10 @@ func (app *App) Get(key string) (bool, []byte) {
 						whatToDo := make([]byte, 1)
 						fileData.Read(whatToDo)
 						if whatToDo[0] == 1 {
+
 							fileSummary.Close()
 							fileData.Close()
+
 							return false, []byte("Podatak je logicki obrisan")
 						}
 
@@ -155,6 +158,8 @@ func (app *App) Get(key string) (bool, []byte) {
 						fileSummary.Close()
 						fileData.Close()
 						app.cache.AddElement(key, value)
+						fileData.Close()
+						fileSummary.Close()
 						return true, value
 					}
 				}
