@@ -171,12 +171,17 @@ func (m *Memtable) Delete(key string, value []byte, answer bool) bool {
 	return false
 }
 
-func (m *Memtable) Get(key string) (bool, []byte) {
+func (m *Memtable) Get(key string) (bool, bool, []byte) {
 	valueNode := m.skipList.FindElement(key)
 	if valueNode != nil {
-		return true, valueNode.GetValue()
+		if valueNode.GetTombstone() == false{
+			return true, false, valueNode.GetValue()
+		}else {
+			return true, true, valueNode.GetValue()
+		}
+
 	}
-	return false, []byte("Nema nista")
+	return false, false, []byte("Nema nista")
 }
 
 func (m *Memtable) Compactions(whatLvl int) {
@@ -216,10 +221,10 @@ func (m *Memtable) Compactions(whatLvl int) {
 			_, err2 := index2.Read(j)
 
 			if err1 == io.EOF {
-				//index2.Seek(-16-int64(jLen), 1)
+				index2.Seek(-16-int64(jLen), 1)
 				break
 			}else if err2 == io.EOF{
-				//index1.Seek(-16-int64(iLen), 1)
+				index1.Seek(-16-int64(iLen), 1)
 				break
 			}
 
@@ -233,39 +238,15 @@ func (m *Memtable) Compactions(whatLvl int) {
 			writeTime2, tombstone2, key2, value2 := PrepareData(file2)
 
 			if string(key1) == string(key2) {
-				if tombstone1[0] != tombstone2[0] {
-					continue
-				} else {
-					if writeTime1 > writeTime2 {
-						newCms.AddElement(string(key1))
-						newHll.AddElement(string(key1))
-						newMerkle.AddElement(value1)
-						newBloom.AddElement(string(key1))
-						newSkipList.AddElement(string(key1), value1)
-					} else {
-						newCms.AddElement(string(key2))
-						newHll.AddElement(string(key2))
-						newMerkle.AddElement(value2)
-						newBloom.AddElement(string(key2))
-						newSkipList.AddElement(string(key2), value2)
+					if tombstone2[0] == 0{
+						AddOnNextLevel(&newMerkle,&newBloom,newSkipList,newCms,newHll,writeTime2,tombstone2,key2,value2)
 					}
-				}
 			} else {
 				if string(key1) < string(key2) {
-					newCms.AddElement(string(key1))
-					newHll.AddElement(string(key1))
-					newMerkle.AddElement(value1)
-					newBloom.AddElement(string(key1))
-					newSkipList.AddElement(string(key1), value1)
-
+					AddOnNextLevel(&newMerkle,&newBloom,newSkipList,newCms,newHll,writeTime1,tombstone1,key1,value1)
 					index2.Seek(-16-int64(jLen), 1)
 				} else {
-					newCms.AddElement(string(key2))
-					newHll.AddElement(string(key2))
-					newMerkle.AddElement(value2)
-					newBloom.AddElement(string(key2))
-					newSkipList.AddElement(string(key2), value2)
-
+					AddOnNextLevel(&newMerkle,&newBloom,newSkipList,newCms,newHll,writeTime2,tombstone2,key2,value2)
 					index1.Seek(-16-int64(iLen), 1)
 				}
 			}
@@ -282,16 +263,9 @@ func (m *Memtable) Compactions(whatLvl int) {
 			}
 
 			offset1 := binary.LittleEndian.Uint64(i[iLen:])
-
 			file1.Seek(int64(offset1), 0)
-
-			_, _, key1, value1 := PrepareData(file1)
-
-			newCms.AddElement(string(key1))
-			newHll.AddElement(string(key1))
-			newMerkle.AddElement(value1)
-			newBloom.AddElement(string(key1))
-			newSkipList.AddElement(string(key1), value1)
+			writeTime1, tombstone1, key1, value1 := PrepareData(file1)
+			AddOnNextLevel(&newMerkle,&newBloom,newSkipList,newCms,newHll,writeTime1,tombstone1,key1,value1)
 		}
 		for {
 			jLenBytes := make([]byte, 8)
@@ -306,16 +280,9 @@ func (m *Memtable) Compactions(whatLvl int) {
 			}
 
 			offset2 := binary.LittleEndian.Uint64(j[jLen:])
-
 			file2.Seek(int64(offset2), 0)
-
-			_, _, key1, value1 := PrepareData(file2)
-
-			newCms.AddElement(string(key1))
-			newHll.AddElement(string(key1))
-			newMerkle.AddElement(value1)
-			newBloom.AddElement(string(key1))
-			newSkipList.AddElement(string(key1), value1)
+			writeTime2, tombstone2, key2, value2 := PrepareData(file2)
+			AddOnNextLevel(&newMerkle,&newBloom,newSkipList,newCms,newHll,writeTime2,tombstone2,key2,value2)
 		}
 
 		index1.Close()
@@ -358,6 +325,19 @@ func (m *Memtable) Compactions(whatLvl int) {
 	}
 }
 
+func AddOnNextLevel(newMerkle *MerkleTree.MerkleTree, newBloom *BloomFilter.BloomFilter, newSkipList *SkipList.SkipList,
+newCms *CMS.CountMinSketch, newHll *HLL.HLL,writeTime uint64, tombstone []byte, key []byte, value []byte){
+	newCms.AddElement(string(key))
+	newHll.AddElement(string(key))
+	newMerkle.AddElement(value)
+	newBloom.AddElement(string(key))
+	if tombstone[0] == 0 {
+		newSkipList.AddElement(string(key), value)
+	}else {
+		newSkipList.AddDeletedElement(string(key), value, int64(writeTime))
+	}
+
+}
 func PrepareData(file *os.File) (uint64, []byte, []byte, []byte) {
 	crc1 := make([]byte, 4)
 	file.Read(crc1)
