@@ -42,11 +42,16 @@ func (app *App) StopApp() {
 
 func (app *App) Get(key string) (bool, []byte) {
 	var value []byte
-	var isThere bool
-	isThere, value = app.memtable.Get(key)
+	var isThere, deleted bool
+	isThere, deleted, value = app.memtable.Get(key)
 	if isThere {
-		app.cache.AddElement(key, value)
-		return true, value
+		if deleted{
+			return false, []byte("Podatak je logicki obrisan")
+		}else{
+			app.cache.AddElement(key, value)
+			return true, value
+		}
+
 	}
 
 	isThere, value = app.cache.GetElement(key)
@@ -56,7 +61,12 @@ func (app *App) Get(key string) (bool, []byte) {
 	}
 
 	for i := 1; i <= app.data["lsm_max_lvl"]; i++ {
-		for j := 1; j <= Memtable.FindLSMGeneration(i); i++ {
+		maxGen := Memtable.FindLSMGeneration(i)
+		for j := 1; j <= maxGen; j++ {
+			gen := j
+			if i == app.data["lsm_max_lvl"]{
+				j = maxGen - j + 1
+			}
 			bloomFilter := BloomFilter.DeserializeBloomFilter(j, i)
 			isThere = bloomFilter.IsElementInBloomFilter(key)
 			if isThere {
@@ -122,6 +132,8 @@ func (app *App) Get(key string) (bool, []byte) {
 						whatToDo := make([]byte, 1)
 						fileData.Read(whatToDo)
 						if whatToDo[0] == 1 {
+							fileSummary.Close()
+							fileData.Close()
 							return false, []byte("Podatak je logicki obrisan")
 						}
 
@@ -140,19 +152,22 @@ func (app *App) Get(key string) (bool, []byte) {
 						if Memtable.CRC32(value) != c {
 							panic("Nece da oce")
 						}
+						fileSummary.Close()
+						fileData.Close()
 						app.cache.AddElement(key, value)
 						return true, value
 					}
 				}
 				fileSummary.Close()
 			}
+			j = gen
 		}
 	}
 	return false, []byte("Ne postoji")
 }
 
 func (app *App) Delete(key string, value []byte) bool {
-	app.cache.RemoveElement(key)
 	answer, _ := app.Get(key)
+	app.cache.RemoveElement(key)
 	return app.memtable.Delete(key, value, answer)
 }
