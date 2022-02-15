@@ -6,10 +6,8 @@ import (
 	"Projekat/App/HLL"
 	"Projekat/App/MerkleTree"
 	"Projekat/App/SkipList"
-	"Projekat/App/TokenBucket"
 	"Projekat/App/WAL"
 	"encoding/binary"
-	"fmt"
 	"hash/crc32"
 	"io"
 	"io/ioutil"
@@ -30,7 +28,6 @@ type Memtable struct {
 	cms         *CMS.CountMinSketch
 	hll         *HLL.HLL
 	wal         *WAL.WAL
-	tokenBucket *TokenBucket.TokenBucket
 }
 
 func CreateMemtable(data map[string]int, fromYaml bool) *Memtable {
@@ -56,7 +53,6 @@ func CreateMemtable(data map[string]int, fromYaml bool) *Memtable {
 	memtable.cms = CMS.CreateCountMinSketch(cmsEpsilon, cmsDelta)
 	memtable.hll = HLL.CreateHLL(uint8(hllPrecision))
 	memtable.RecreateWALandSkipList()
-	memtable.tokenBucket = TokenBucket.CreateTokenBucket(data["tokenbucket_size"], data["tokenbucket_interval"])
 	return &memtable
 }
 
@@ -119,64 +115,55 @@ func (m *Memtable) RecreateWALandSkipList() {
 }
 
 func (m *Memtable) Write(key string, value []byte) bool {
-
-	if m.tokenBucket.Update() {
-		success := m.wal.AddElement(key, value)
-		if success {
-			m.cms.AddElement(key)
-			m.hll.AddElement(key)
-			err, isNew := m.skipList.AddElement(key, value)
-			if err != nil {
-				return false
-			}
-			if isNew {
-				m.currentSize += 1
-			}
-			if m.currentSize*100 >= m.size*m.threshold {
-				m.currentSize = 0
-				m.Flush()
-			}
-			return true
+	success := m.wal.AddElement(key, value)
+	if success {
+		m.cms.AddElement(key)
+		m.hll.AddElement(key)
+		err, isNew := m.skipList.AddElement(key, value)
+		if err != nil {
+			return false
 		}
-		return false
+		if isNew {
+			m.currentSize += 1
+		}
+		if m.currentSize*100 >= m.size*m.threshold {
+			m.currentSize = 0
+			m.Flush()
+		}
+		return true
 	}
-	fmt.Println("Dostigli ste maksimalan broj zahteva. Pokušajte ponovo kasnije")
 	return false
 }
 
 func (m *Memtable) Delete(key string, value []byte, answer bool) bool {
-	if m.tokenBucket.Update() {
-		if answer {
-			success := m.wal.DeleteElement(key, value)
-			if success {
-				s := m.skipList.RemoveElement(key)
+	if answer {
+		success := m.wal.DeleteElement(key, value)
+		if success {
+			s := m.skipList.RemoveElement(key)
 
-				if s == 0 {
-					return true
-				} else if s == 1 {
-					now := time.Now()
-					timestamp := now.Unix()
-					err := m.skipList.AddDeletedElement(key, value, timestamp)
-					if err != nil {
-						panic(err)
-					}
-					m.currentSize += 1
-					return true
+			if s == 0 {
+				return true
+			} else if s == 1 {
+				now := time.Now()
+				timestamp := now.Unix()
+				err := m.skipList.AddDeletedElement(key, value, timestamp)
+				if err != nil {
+					panic(err)
 				}
+				m.currentSize += 1
+				return true
 			}
 		}
-		return false
 	}
-	fmt.Println("Dostigli ste maksimalan broj zahteva. Pokušajte ponovo kasnije")
 	return false
 }
 
 func (m *Memtable) Get(key string) (bool, bool, []byte) {
 	valueNode := m.skipList.FindElement(key)
 	if valueNode != nil {
-		if valueNode.GetTombstone() == false{
+		if valueNode.GetTombstone() == false {
 			return true, false, valueNode.GetValue()
-		}else {
+		} else {
 			return true, true, valueNode.GetValue()
 		}
 
@@ -223,7 +210,7 @@ func (m *Memtable) Compactions(whatLvl int) {
 			if err1 == io.EOF {
 				index2.Seek(-16-int64(jLen), 1)
 				break
-			}else if err2 == io.EOF{
+			} else if err2 == io.EOF {
 				index1.Seek(-16-int64(iLen), 1)
 				break
 			}
@@ -238,15 +225,15 @@ func (m *Memtable) Compactions(whatLvl int) {
 			writeTime2, tombstone2, key2, value2 := PrepareData(file2)
 
 			if string(key1) == string(key2) {
-					if tombstone2[0] == 0{
-						AddOnNextLevel(&newMerkle,&newBloom,newSkipList,newCms,newHll,writeTime2,tombstone2,key2,value2)
-					}
+				if tombstone2[0] == 0 {
+					AddOnNextLevel(&newMerkle, &newBloom, newSkipList, newCms, newHll, writeTime2, tombstone2, key2, value2)
+				}
 			} else {
 				if string(key1) < string(key2) {
-					AddOnNextLevel(&newMerkle,&newBloom,newSkipList,newCms,newHll,writeTime1,tombstone1,key1,value1)
+					AddOnNextLevel(&newMerkle, &newBloom, newSkipList, newCms, newHll, writeTime1, tombstone1, key1, value1)
 					index2.Seek(-16-int64(jLen), 1)
 				} else {
-					AddOnNextLevel(&newMerkle,&newBloom,newSkipList,newCms,newHll,writeTime2,tombstone2,key2,value2)
+					AddOnNextLevel(&newMerkle, &newBloom, newSkipList, newCms, newHll, writeTime2, tombstone2, key2, value2)
 					index1.Seek(-16-int64(iLen), 1)
 				}
 			}
@@ -265,7 +252,7 @@ func (m *Memtable) Compactions(whatLvl int) {
 			offset1 := binary.LittleEndian.Uint64(i[iLen:])
 			file1.Seek(int64(offset1), 0)
 			writeTime1, tombstone1, key1, value1 := PrepareData(file1)
-			AddOnNextLevel(&newMerkle,&newBloom,newSkipList,newCms,newHll,writeTime1,tombstone1,key1,value1)
+			AddOnNextLevel(&newMerkle, &newBloom, newSkipList, newCms, newHll, writeTime1, tombstone1, key1, value1)
 		}
 		for {
 			jLenBytes := make([]byte, 8)
@@ -282,7 +269,7 @@ func (m *Memtable) Compactions(whatLvl int) {
 			offset2 := binary.LittleEndian.Uint64(j[jLen:])
 			file2.Seek(int64(offset2), 0)
 			writeTime2, tombstone2, key2, value2 := PrepareData(file2)
-			AddOnNextLevel(&newMerkle,&newBloom,newSkipList,newCms,newHll,writeTime2,tombstone2,key2,value2)
+			AddOnNextLevel(&newMerkle, &newBloom, newSkipList, newCms, newHll, writeTime2, tombstone2, key2, value2)
 		}
 
 		index1.Close()
@@ -326,14 +313,14 @@ func (m *Memtable) Compactions(whatLvl int) {
 }
 
 func AddOnNextLevel(newMerkle *MerkleTree.MerkleTree, newBloom *BloomFilter.BloomFilter, newSkipList *SkipList.SkipList,
-newCms *CMS.CountMinSketch, newHll *HLL.HLL,writeTime uint64, tombstone []byte, key []byte, value []byte){
+	newCms *CMS.CountMinSketch, newHll *HLL.HLL, writeTime uint64, tombstone []byte, key []byte, value []byte) {
 	newCms.AddElement(string(key))
 	newHll.AddElement(string(key))
 	newMerkle.AddElement(value)
 	newBloom.AddElement(string(key))
 	if tombstone[0] == 0 {
 		newSkipList.AddElement(string(key), value)
-	}else {
+	} else {
 		newSkipList.AddDeletedElement(string(key), value, int64(writeTime))
 	}
 

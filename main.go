@@ -107,7 +107,6 @@ func main() {
 	app.Put("kljuc01", []byte("vrednost01"))
 	app.Put("kljuc28", []byte("vrednost28"))
 
-
 	_, value := app.Get("kljuc01")
 	fmt.Println(string(value))
 	_, value = app.Get("kljuc02")
