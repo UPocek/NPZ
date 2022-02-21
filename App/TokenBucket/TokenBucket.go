@@ -11,13 +11,24 @@ type TokenBucket struct {
 	resetInterval int64
 }
 
-func CreateTokenBucket(size, resetInterval int) *TokenBucket {
+func CreateTokenBucket(size, resetInterval, tokensLeft int, lastReset int64) *TokenBucket {
+	token := TokenBucket{size, tokensLeft, lastReset, int64(resetInterval)}
 	now := time.Now()
 	timestamp := now.Unix()
-	tb := TokenBucket{size, size, timestamp, int64(resetInterval)}
-	return &tb
+	if timestamp-token.lastReset > token.resetInterval {
+		token.tokensLeft = token.tokensMax
+		token.lastReset = timestamp
+	}
+	return &token
 }
 
+func (token *TokenBucket) GetTokensLeft() int {
+	return token.tokensLeft
+}
+
+func (token *TokenBucket) GetLastReset() int64 {
+	return token.lastReset
+}
 func (token *TokenBucket) Update() bool {
 	now := time.Now()
 	timestamp := now.Unix()

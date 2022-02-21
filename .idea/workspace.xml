@@ -6,36 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="79c98e87-7257-4b29-a1a1-8232db32f977" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/TokenBucket/TokenBucket.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/TokenBucket/TokenBucket.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/App/app.go" beforeDir="false" afterPath="$PROJECT_DIR$/App/app.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/bloomFilter/usertable-lvl=1-gen=1-Filter.db" beforeDir="false" afterPath="$PROJECT_DIR$/Data/bloomFilter/usertable-lvl=1-gen=1-Filter.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/bloomFilter/usertable-lvl=2-gen=1-Filter.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/bloomFilter/usertable-lvl=3-gen=1-Filter.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/bloomFilter/usertable-lvl=3-gen=2-Filter.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/countMinSketch/usertable-lvl=1-gen=1-CountMinSketch.db" beforeDir="false" afterPath="$PROJECT_DIR$/Data/countMinSketch/usertable-lvl=1-gen=1-CountMinSketch.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/countMinSketch/usertable-lvl=2-gen=1-CountMinSketch.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/countMinSketch/usertable-lvl=3-gen=1-CountMinSketch.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/countMinSketch/usertable-lvl=3-gen=2-CountMinSketch.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/data/usertable-lvl=1-gen=1-Data.db" beforeDir="false" afterPath="$PROJECT_DIR$/Data/data/usertable-lvl=1-gen=1-Data.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/data/usertable-lvl=2-gen=1-Data.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/data/usertable-lvl=3-gen=1-Data.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/data/usertable-lvl=3-gen=2-Data.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/hyperLogLog/usertable-lvl=1-gen=1-HyperLogLog.db" beforeDir="false" afterPath="$PROJECT_DIR$/Data/hyperLogLog/usertable-lvl=1-gen=1-HyperLogLog.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/hyperLogLog/usertable-lvl=2-gen=1-HyperLogLog.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/hyperLogLog/usertable-lvl=3-gen=1-HyperLogLog.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/hyperLogLog/usertable-lvl=3-gen=2-HyperLogLog.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/index/usertable-lvl=2-gen=1-Index.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/index/usertable-lvl=3-gen=1-Index.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/index/usertable-lvl=3-gen=2-Index.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/merkleTree/usertable-lvl=2-gen=1-Metadata.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/merkleTree/usertable-lvl=3-gen=1-Metadata.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/merkleTree/usertable-lvl=3-gen=2-Metadata.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/summary/usertable-lvl=2-gen=1-Summary.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/summary/usertable-lvl=3-gen=1-Summary.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/summary/usertable-lvl=3-gen=2-Summary.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/toc/usertable-lvl=2-gen=1-TOC.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/toc/usertable-lvl=3-gen=1-TOC.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/toc/usertable-lvl=3-gen=2-TOC.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Data/wal/segments/wal_1.bin" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -50,7 +22,7 @@
       </list>
     </option>
   </component>
-  <component name="GOROOT" url="file:///usr/local/go" />
+  <component name="GOROOT" url="file://C:/Program Files/Go" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -109,6 +81,7 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />

@@ -5,6 +5,7 @@ import (
 	"Projekat/App/Cache"
 	"Projekat/App/Memtable"
 	"Projekat/App/TokenBucket"
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"gopkg.in/yaml.v3"
@@ -12,13 +13,22 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 )
+
+type User struct {
+	username    string
+	password    string
+	tokenBucket *TokenBucket.TokenBucket
+}
 
 type App struct {
 	memtable    *Memtable.Memtable
 	cache       *Cache.Cache
 	tokenBucket *TokenBucket.TokenBucket
 	data        map[string]int
+	user        User
 }
 
 func CreateApp() App {
@@ -32,20 +42,20 @@ func CreateApp() App {
 	}
 	app.memtable = Memtable.CreateMemtable(app.data, fromYaml)
 	app.cache = Cache.CreateCache(uint32(app.data["cache_max_size"]))
-	app.tokenBucket = TokenBucket.CreateTokenBucket(app.data["tokenbucket_size"], app.data["tokenbucket_interval"])
+
 	return app
 }
 
-func (app *App) Put(key string, value []byte) bool {
+func (app *App) put(key string, value []byte) bool {
 	if app.tokenBucket.Update() {
 		ok := app.memtable.Write(key, value)
 		return ok
 	}
-	fmt.Println("Dostigli ste maksimalan broj zahteva. Pokušajte ponovo kasnije")
+	fmt.Println("Greška: Dostigli ste maksimalan broj zahteva. Pokušajte ponovo kasnije")
 	return false
 }
 
-func (app *App) Get(key string) (bool, []byte) {
+func (app *App) get(key string) (bool, []byte) {
 	if app.tokenBucket.Update() {
 		var value []byte
 		var isThere, deleted bool
@@ -176,196 +186,346 @@ func (app *App) Get(key string) (bool, []byte) {
 		}
 		return false, []byte("Ne postoji")
 	}
-	return false, []byte("Dostigli ste maksimalan broj zahteva. Pokušajte ponovo kasnije")
+	return false, []byte("Greška: Dostigli ste maksimalan broj zahteva. Pokušajte ponovo kasnije")
 }
 
-func (app *App) Delete(key string, value []byte) bool {
+func (app *App) delete(key string, value []byte) bool {
 	if app.tokenBucket.Update() {
-		answer, _ := app.Get(key)
+		answer, _ := app.get(key)
 		app.cache.RemoveElement(key)
 		return app.memtable.Delete(key, value, answer)
 	}
-	fmt.Println("Dostigli ste maksimalan broj zahteva. Pokušajte ponovo kasnije")
+	fmt.Println("Greška: Dostigli ste maksimalan broj zahteva. Pokušajte ponovo kasnije")
 	return false
+}
+
+func (app *App) RunApp() {
+	for true {
+		fmt.Print("Izaberite jednu od opcija:\n 1) Login \n 2) Register \n 3) Exit \n>> ")
+		var option string
+		fmt.Scanln(&option)
+		if strings.Replace(option, ")", "", 1) == "1" {
+			fmt.Print("Unesite korisničko ime\n >> ")
+			var username string
+			fmt.Scanln(&username)
+
+			fmt.Print("Unesite lozinku\n >> ")
+			var password string
+			fmt.Scanln(&password)
+
+			if app.login(username, password) {
+				app.options()
+			}
+		} else if strings.Replace(option, ")", "", 1) == "2" {
+			fmt.Print("Unesite korisničko ime\n >> ")
+			var username string
+			fmt.Scanln(&username)
+
+			fmt.Print("Unesite lozinku\n >> ")
+			var password string
+			fmt.Scanln(&password)
+
+			if !app.login(username, password) {
+				file, err := os.OpenFile("Data/users/users.csv", os.O_APPEND, 0777)
+				if err != nil {
+					panic(err)
+				}
+
+				_, err = file.WriteString(username + "," + password + "," + strconv.Itoa(app.data["tokenbucket_size"]) + "," + strconv.Itoa(int(time.Now().Unix())) + "\n")
+				if err != nil {
+					panic(err)
+				}
+				file.Close()
+			} else {
+				fmt.Println("\nGreška: Korisnik sa tim podacima već postoji.\n")
+			}
+		} else if strings.Replace(option, ")", "", 1) == "3" {
+			break
+		} else {
+			fmt.Println("\nGreška: Uneta opcija ne postoji pokušajte ponovo.\n")
+		}
+	}
+}
+
+func (app *App) login(username, password string) bool {
+	file, err := os.OpenFile("Data/users/users.csv", os.O_RDONLY, 0777)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		// do something with a line
+		items := strings.Split(scanner.Text(), ",")
+		if username == items[0] && password == items[1] {
+			app.user.username = username
+			app.user.password = password
+			tokensLeft, _ := strconv.Atoi(items[2])
+			lastReset, _ := strconv.Atoi(items[3])
+			app.user.tokenBucket = TokenBucket.CreateTokenBucket(app.data["tokenbucket_size"], app.data["tokenbucket_interval"], tokensLeft, int64(lastReset))
+			app.tokenBucket = app.user.tokenBucket
+			return true
+		}
+	}
+	return false
+}
+
+func (app *App) options() {
+	for true {
+		fmt.Print("Izaberite jednu od opcija:\n 1) Put \n 2) Get \n 3) Delete \n 4) Test \n 5) Logout \n >> ")
+		var option string
+		fmt.Scanln(&option)
+		if strings.Replace(option, ")", "", 1) == "1" {
+			fmt.Print("Unesite ključ\n >> ")
+			var key string
+			fmt.Scanln(&key)
+			fmt.Print("Unesite vrednost\n >> ")
+			var value string
+			fmt.Scanln(&value)
+			ok := app.put(key, []byte(value))
+			if ok {
+				fmt.Println("\nDodavanje elementa je uspešno odradjeno!\n")
+			} else {
+				fmt.Println("\nGreška: Prilikom dodavanja elementa!\n")
+			}
+		} else if strings.Replace(option, ")", "", 1) == "2" {
+			fmt.Print("Unesite ključ\n >> ")
+			var key string
+			fmt.Scanln(&key)
+			ok, value := app.get(key)
+			if ok {
+				fmt.Println("\nVrednost ključa " + key + " je " + string(value) + "\n")
+			} else {
+				fmt.Println(string(value))
+			}
+		} else if strings.Replace(option, ")", "", 1) == "3" {
+			fmt.Print("Unesite ključ\n >> ")
+			var key string
+			fmt.Scanln(&key)
+			fmt.Print("Unesite vrednost\n >> ")
+			var value string
+			fmt.Scanln(&value)
+			ok := app.delete(key, []byte(value))
+			if ok {
+				fmt.Println("\nBrisanje elementa je uspešno odradjeno!\n")
+			} else {
+				fmt.Println("\nGreška: Prilikom brisanja elementa!\n")
+			}
+		} else if strings.Replace(option, ")", "", 1) == "4" {
+			ok := app.test()
+			if !ok {
+				fmt.Println("\nGreška: Prilikom testiranja\n")
+			}
+		} else if strings.Replace(option, ")", "", 1) == "5" {
+			break
+		} else {
+			fmt.Println("\nGreška: Uneta opcija ne postoji pokušajte ponovo.\n")
+		}
+		app.updateUsersFile()
+	}
+}
+
+func (app *App) updateUsersFile() {
+	file, err := os.OpenFile("Data/users/users.csv", os.O_RDWR, 0777)
+	if err != nil {
+		panic(err)
+	}
+	scanner := bufio.NewScanner(file)
+	list := make([]byte, 0)
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), app.user.username) {
+			list = append(list, app.user.username+","+app.user.password+","+strconv.Itoa(app.user.tokenBucket.GetTokensLeft())+","+strconv.Itoa(int(app.user.tokenBucket.GetLastReset()))+"\n"...)
+		} else {
+			list = append(list, []byte(scanner.Text()+"\n")...)
+		}
+	}
+	file.Close()
+
+	file, err = os.OpenFile("Data/users/users.csv", os.O_RDWR, 0777)
+	file.WriteString(string(list))
+	file.Close()
+
 }
 
 func (app *App) StopApp() {
 	app.memtable.Finish()
+	os.Exit(0)
 }
 
-func (app *App) Test() bool {
-	app.Put("kljuc01", []byte("vrednost1"))
-	app.Put("kljuc02", []byte("vrednost2"))
-	app.Put("kljuc03", []byte("vrednost3"))
-	app.Put("kljuc04", []byte("vrednost4"))
-	app.Put("kljuc05", []byte("vrednost5"))
-	app.Put("kljuc06", []byte("vrednost6"))
-	app.Put("kljuc07", []byte("vrednost7"))
+func (app *App) test() bool {
+	app.put("kljuc01", []byte("vrednost1"))
+	app.put("kljuc02", []byte("vrednost2"))
+	app.put("kljuc03", []byte("vrednost3"))
+	app.put("kljuc04", []byte("vrednost4"))
+	app.put("kljuc05", []byte("vrednost5"))
+	app.put("kljuc06", []byte("vrednost6"))
+	app.put("kljuc07", []byte("vrednost7"))
 
-	app.Put("kljuc08", []byte("vrednost8"))
-	app.Delete("kljuc03", []byte("vrednost3"))
-	app.Put("kljuc10", []byte("vrednost10"))
-	app.Put("kljuc11", []byte("vrednost11"))
-	app.Put("kljuc12", []byte("vrednost12"))
-	app.Put("kljuc13", []byte("vrednost13"))
-	app.Put("kljuc14", []byte("vrednost14"))
+	app.put("kljuc08", []byte("vrednost8"))
+	app.delete("kljuc03", []byte("vrednost3"))
+	app.put("kljuc10", []byte("vrednost10"))
+	app.put("kljuc11", []byte("vrednost11"))
+	app.put("kljuc12", []byte("vrednost12"))
+	app.put("kljuc13", []byte("vrednost13"))
+	app.put("kljuc14", []byte("vrednost14"))
 
-	app.Delete("kljuc15", []byte("vrednost15"))
-	app.Delete("kljuc05", []byte("vrednost5"))
-	app.Delete("kljuc06", []byte("vrednost6"))
-	app.Put("kljuc18", []byte("vrednost18"))
-	app.Delete("kljuc08", []byte("vrednost08"))
-	app.Put("kljuc20", []byte("vrednost20"))
-	app.Put("kljuc21", []byte("vrednost21"))
-	app.Put("kljuc30", []byte("vrednost30"))
+	app.delete("kljuc15", []byte("vrednost15"))
+	app.delete("kljuc05", []byte("vrednost5"))
+	app.delete("kljuc06", []byte("vrednost6"))
+	app.put("kljuc18", []byte("vrednost18"))
+	app.delete("kljuc08", []byte("vrednost08"))
+	app.put("kljuc20", []byte("vrednost20"))
+	app.put("kljuc21", []byte("vrednost21"))
+	app.put("kljuc30", []byte("vrednost30"))
 
-	app.Put("kljuc23", []byte("vrednost23"))
-	app.Put("kljuc24", []byte("vrednost24"))
-	app.Put("kljuc25", []byte("vrednost25"))
-	app.Put("kljuc26", []byte("vrednost26"))
-	app.Put("kljuc27", []byte("vrednost27"))
-	app.Put("kljuc01", []byte("vrednost01"))
-	app.Put("kljuc28", []byte("vrednost28"))
+	app.put("kljuc23", []byte("vrednost23"))
+	app.put("kljuc24", []byte("vrednost24"))
+	app.put("kljuc25", []byte("vrednost25"))
+	app.put("kljuc26", []byte("vrednost26"))
+	app.put("kljuc27", []byte("vrednost27"))
+	app.put("kljuc01", []byte("vrednost01"))
+	app.put("kljuc28", []byte("vrednost28"))
 
-	app.Put("kljuc31", []byte("vrednost31"))
-	app.Put("kljuc32", []byte("vrednost32"))
-	app.Put("kljuc33", []byte("vrednost33"))
-	app.Put("kljuc34", []byte("vrednost34"))
-	app.Put("kljuc35", []byte("vrednost35"))
-	app.Put("kljuc36", []byte("vrednost36"))
-	app.Put("kljuc37", []byte("vrednost37"))
+	app.put("kljuc31", []byte("vrednost31"))
+	app.put("kljuc32", []byte("vrednost32"))
+	app.put("kljuc33", []byte("vrednost33"))
+	app.put("kljuc34", []byte("vrednost34"))
+	app.put("kljuc35", []byte("vrednost35"))
+	app.put("kljuc36", []byte("vrednost36"))
+	app.put("kljuc37", []byte("vrednost37"))
 
-	app.Put("kljuc08", []byte("vrednost8"))
-	app.Delete("kljuc07", []byte("vrednost7"))
-	app.Put("kljuc10", []byte("vrednost10"))
-	app.Put("kljuc11", []byte("vrednost11"))
-	app.Put("kljuc12", []byte("vrednost12"))
-	app.Put("kljuc13", []byte("vrednost13"))
-	app.Put("kljuc14", []byte("vrednost14"))
+	app.put("kljuc08", []byte("vrednost8"))
+	app.delete("kljuc07", []byte("vrednost7"))
+	app.put("kljuc10", []byte("vrednost10"))
+	app.put("kljuc11", []byte("vrednost11"))
+	app.put("kljuc12", []byte("vrednost12"))
+	app.put("kljuc13", []byte("vrednost13"))
+	app.put("kljuc14", []byte("vrednost14"))
 
-	app.Delete("kljuc15", []byte("vrednost15"))
-	app.Delete("kljuc05", []byte("vrednost5"))
-	app.Delete("kljuc06", []byte("vrednost6"))
-	app.Put("kljuc18", []byte("vrednost18"))
-	app.Delete("kljuc08", []byte("vrednost08"))
-	app.Put("kljuc20", []byte("vrednost20"))
-	app.Put("kljuc21", []byte("vrednost21"))
-	app.Put("kljuc30", []byte("vrednost30"))
+	app.delete("kljuc15", []byte("vrednost15"))
+	app.delete("kljuc05", []byte("vrednost5"))
+	app.delete("kljuc06", []byte("vrednost6"))
+	app.put("kljuc18", []byte("vrednost18"))
+	app.delete("kljuc08", []byte("vrednost08"))
+	app.put("kljuc20", []byte("vrednost20"))
+	app.put("kljuc21", []byte("vrednost21"))
+	app.put("kljuc30", []byte("vrednost30"))
 
-	app.Put("kljuc23", []byte("vrednost23"))
-	app.Put("kljuc24", []byte("vrednost24"))
-	app.Put("kljuc25", []byte("vrednost25"))
-	app.Put("kljuc26", []byte("vrednost26"))
-	app.Put("kljuc27", []byte("vrednost27"))
-	app.Put("kljuc01", []byte("vrednost01"))
-	app.Put("kljuc28", []byte("vrednost28"))
+	app.put("kljuc23", []byte("vrednost23"))
+	app.put("kljuc24", []byte("vrednost24"))
+	app.put("kljuc25", []byte("vrednost25"))
+	app.put("kljuc26", []byte("vrednost26"))
+	app.put("kljuc27", []byte("vrednost27"))
+	app.put("kljuc01", []byte("vrednost01"))
+	app.put("kljuc28", []byte("vrednost28"))
 
-	app.Put("kljuc01", []byte("vrednost1"))
-	app.Put("kljuc02", []byte("nova_vrednost2"))
-	app.Put("kljuc03", []byte("vrednost3"))
-	app.Put("kljuc04", []byte("vrednost4"))
-	app.Put("kljuc05", []byte("vrednost5"))
-	app.Put("kljuc06", []byte("vrednost6"))
-	app.Put("kljuc07", []byte("vrednost7"))
+	app.put("kljuc01", []byte("vrednost1"))
+	app.put("kljuc02", []byte("nova_vrednost2"))
+	app.put("kljuc03", []byte("vrednost3"))
+	app.put("kljuc04", []byte("vrednost4"))
+	app.put("kljuc05", []byte("vrednost5"))
+	app.put("kljuc06", []byte("vrednost6"))
+	app.put("kljuc07", []byte("vrednost7"))
 
-	app.Put("kljuc08", []byte("vrednost8"))
-	app.Delete("kljuc03", []byte("vrednost3"))
-	app.Put("kljuc10", []byte("vrednost10"))
-	app.Put("kljuc11", []byte("vrednost11"))
-	app.Put("kljuc12", []byte("vrednost12"))
-	app.Put("kljuc13", []byte("vrednost13"))
-	app.Put("kljuc14", []byte("vrednost14"))
+	app.put("kljuc08", []byte("vrednost8"))
+	app.delete("kljuc03", []byte("vrednost3"))
+	app.put("kljuc10", []byte("vrednost10"))
+	app.put("kljuc11", []byte("vrednost11"))
+	app.put("kljuc12", []byte("vrednost12"))
+	app.put("kljuc13", []byte("vrednost13"))
+	app.put("kljuc14", []byte("vrednost14"))
 
-	app.Delete("kljuc15", []byte("vrednost15"))
-	app.Delete("kljuc05", []byte("vrednost5"))
-	app.Delete("kljuc06", []byte("vrednost6"))
-	app.Put("kljuc18", []byte("vrednost18"))
-	app.Delete("kljuc08", []byte("vrednost08"))
-	app.Put("kljuc20", []byte("vrednost20"))
-	app.Put("kljuc21", []byte("vrednost21"))
-	app.Put("kljuc30", []byte("vrednost30"))
+	app.delete("kljuc15", []byte("vrednost15"))
+	app.delete("kljuc05", []byte("vrednost5"))
+	app.delete("kljuc06", []byte("vrednost6"))
+	app.put("kljuc18", []byte("vrednost18"))
+	app.delete("kljuc08", []byte("vrednost08"))
+	app.put("kljuc20", []byte("vrednost20"))
+	app.put("kljuc21", []byte("vrednost21"))
+	app.put("kljuc30", []byte("vrednost30"))
 
-	app.Put("kljuc23", []byte("vrednost23"))
-	app.Put("kljuc24", []byte("vrednost24"))
-	app.Put("kljuc25", []byte("vrednost25"))
-	app.Put("kljuc26", []byte("vrednost26"))
-	app.Put("kljuc27", []byte("vrednost27"))
-	app.Put("kljuc01", []byte("vrednost01"))
-	app.Put("kljuc28", []byte("vrednost28"))
+	app.put("kljuc23", []byte("vrednost23"))
+	app.put("kljuc24", []byte("vrednost24"))
+	app.put("kljuc25", []byte("vrednost25"))
+	app.put("kljuc26", []byte("vrednost26"))
+	app.put("kljuc27", []byte("vrednost27"))
+	app.put("kljuc01", []byte("vrednost01"))
+	app.put("kljuc28", []byte("vrednost28"))
 
-	_, value := app.Get("kljuc01")
+	_, value := app.get("kljuc01")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc02")
+	_, value = app.get("kljuc02")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc03")
+	_, value = app.get("kljuc03")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc04")
+	_, value = app.get("kljuc04")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc05")
+	_, value = app.get("kljuc05")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc06")
+	_, value = app.get("kljuc06")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc07")
+	_, value = app.get("kljuc07")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc08")
+	_, value = app.get("kljuc08")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc09")
+	_, value = app.get("kljuc09")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc10")
+	_, value = app.get("kljuc10")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc11")
+	_, value = app.get("kljuc11")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc12")
+	_, value = app.get("kljuc12")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc13")
+	_, value = app.get("kljuc13")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc14")
+	_, value = app.get("kljuc14")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc15")
+	_, value = app.get("kljuc15")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc16")
+	_, value = app.get("kljuc16")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc17")
+	_, value = app.get("kljuc17")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc18")
+	_, value = app.get("kljuc18")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc19")
+	_, value = app.get("kljuc19")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc20")
+	_, value = app.get("kljuc20")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc21")
+	_, value = app.get("kljuc21")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc22")
+	_, value = app.get("kljuc22")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc23")
+	_, value = app.get("kljuc23")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc24")
+	_, value = app.get("kljuc24")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc25")
+	_, value = app.get("kljuc25")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc26")
+	_, value = app.get("kljuc26")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc27")
+	_, value = app.get("kljuc27")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc28")
+	_, value = app.get("kljuc28")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc29")
+	_, value = app.get("kljuc29")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc30")
+	_, value = app.get("kljuc30")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc31")
+	_, value = app.get("kljuc31")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc32")
+	_, value = app.get("kljuc32")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc33")
+	_, value = app.get("kljuc33")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc34")
+	_, value = app.get("kljuc34")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc35")
+	_, value = app.get("kljuc35")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc36")
+	_, value = app.get("kljuc36")
 	fmt.Println(string(value))
-	_, value = app.Get("kljuc37")
+	_, value = app.get("kljuc37")
 	fmt.Println(string(value))
 
 	return true
