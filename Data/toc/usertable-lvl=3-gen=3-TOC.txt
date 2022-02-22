@@ -1,0 +1,6 @@
+bloomFilter/usertable-lvl=3-gen=3-Filter.db
+merkleTree/usertable-lvl=3-gen=3-Metadata.db
+data/usertable-lvl=2-gen=3-Data.db
+index/usertable-lvl=2-gen=3-Index.db
+summary/usertable-lvl=2-gen=3-Summary.db
+toc/usertable-lvl=2-gen=3-TOC.txt
