@@ -7,5 +7,7 @@ lsm_max_lvl: 3
 lsm_merge_threshold: 2
 skiplist_max_height: 10
 hll_precision: 4
-tokenbucket_size: 100
+tokenbucket_size: 200
 tokenbucket_interval: 60
+cmsEpsilon: 1
+cmsDelta: 1

@@ -25,15 +25,12 @@ type Memtable struct {
 	currentSize uint
 	lsm         [2]int
 	skipList    *SkipList.SkipList
-	cms         *CMS.CountMinSketch
-	hll         *HLL.HLL
 	wal         *WAL.WAL
 }
 
 func CreateMemtable(data map[string]int, fromYaml bool) *Memtable {
 	var (
-		walSegmentSize, walLWM, memtableSize, memtableThreshold, lsmMaxLevel, lsmMergeThreshold, skiplistMaxHeight, hllPrecision int     = 5, 3, 10, 70, 3, 2, 10, 4
-		cmsEpsilon, cmsDelta                                                                                                     float64 = 0.01, 0.01
+		walSegmentSize, walLWM, memtableSize, memtableThreshold, lsmMaxLevel, lsmMergeThreshold, skiplistMaxHeight int = 5, 3, 10, 70, 3, 2, 10
 	)
 	if fromYaml {
 		walSegmentSize = data["wal_size"]
@@ -41,7 +38,6 @@ func CreateMemtable(data map[string]int, fromYaml bool) *Memtable {
 		memtableSize = data["memtable_size"]
 		memtableThreshold = data["memtable_threshold"]
 		skiplistMaxHeight = data["skiplist_max_height"]
-		hllPrecision = data["hll_precision"]
 	}
 	memtable := Memtable{}
 	memtable.size = uint(memtableSize)
@@ -50,8 +46,6 @@ func CreateMemtable(data map[string]int, fromYaml bool) *Memtable {
 	insideWal := WAL.CreateWAL(uint8(walSegmentSize), uint8(walLWM))
 	memtable.wal = insideWal
 	memtable.skipList = SkipList.CreateSkipList(skiplistMaxHeight, 0, 0)
-	memtable.cms = CMS.CreateCountMinSketch(cmsEpsilon, cmsDelta)
-	memtable.hll = HLL.CreateHLL(uint8(hllPrecision))
 	memtable.RecreateWALandSkipList()
 	return &memtable
 }
@@ -102,8 +96,6 @@ func (m *Memtable) RecreateWALandSkipList() {
 			errNew, isNew := m.skipList.UpdateTimestamp(string(key), value, int64(walTimestamp), whatToDo[0])
 			if isNew {
 				m.currentSize += 1
-				m.cms.AddElement(string(key))
-				m.hll.AddElement(string(key))
 			}
 			if errNew != nil {
 				m.skipList.AddDeletedElement(string(key), value, int64(walTimestamp))
@@ -117,8 +109,6 @@ func (m *Memtable) RecreateWALandSkipList() {
 func (m *Memtable) Write(key string, value []byte) bool {
 	success := m.wal.AddElement(key, value)
 	if success {
-		m.cms.AddElement(key)
-		m.hll.AddElement(key)
 		err, isNew := m.skipList.AddElement(key, value)
 		if err != nil {
 			return false
@@ -135,8 +125,8 @@ func (m *Memtable) Write(key string, value []byte) bool {
 	return false
 }
 
-func (m *Memtable) Delete(key string, value []byte, answer bool) bool {
-	if answer {
+func (m *Memtable) Delete(key string, value []byte, isSomewhere bool) bool {
+	if isSomewhere {
 		success := m.wal.DeleteElement(key, value)
 		if success {
 			s := m.skipList.RemoveElement(key)
@@ -279,10 +269,6 @@ func (m *Memtable) Compactions(whatLvl int) {
 
 		removeOldFiles(whatLvl, current)
 
-		// usertable-lvl=LVL-gen=GEN-CountMinSketch.db
-		newCms.SerializeCountMinSketch(n+1, whatLvl+1)
-		// usertable-lvl=LVL-gen=GEN-HyperLogLog.db
-		newHll.SerializeHLL(n+1, whatLvl+1)
 		// usertable-lvl=LVL-gen=GEN-Filter.db
 		newBloom.SerializeBloomFilter(n+1, whatLvl+1)
 		// usertable-lvl=LVL-gen=GEN-Metadata.db
@@ -381,11 +367,6 @@ func (m *Memtable) Flush() {
 		panic(err)
 	}
 	file.Close()
-
-	// usertable-lvl=LVL-gen=GEN-CountMinSketch.db
-	m.cms.SerializeCountMinSketch(gen+1, 1)
-	// usertable-lvl=LVL-gen=GEN-HyperLogLog.db
-	m.hll.SerializeHLL(gen+1, 1)
 
 	m.skipList = SkipList.CreateSkipList(10, 0, 0)
 	m.wal = m.wal.ResetWAL()
@@ -565,22 +546,6 @@ func removeOldFiles(whatLvl, current int) {
 		log.Fatal(e)
 	}
 	e = os.Remove("Data/bloomFilter/usertable-lvl=" + strconv.Itoa(whatLvl) + "-gen=" + strconv.Itoa(current) + "-Filter.db")
-	if e != nil {
-		log.Fatal(e)
-	}
-	e = os.Remove("Data/countMinSketch/usertable-lvl=" + strconv.Itoa(whatLvl) + "-gen=" + strconv.Itoa(current-1) + "-CountMinSketch.db")
-	if e != nil {
-		log.Fatal(e)
-	}
-	e = os.Remove("Data/countMinSketch/usertable-lvl=" + strconv.Itoa(whatLvl) + "-gen=" + strconv.Itoa(current) + "-CountMinSketch.db")
-	if e != nil {
-		log.Fatal(e)
-	}
-	e = os.Remove("Data/hyperLogLog/usertable-lvl=" + strconv.Itoa(whatLvl) + "-gen=" + strconv.Itoa(current-1) + "-HyperLogLog.db")
-	if e != nil {
-		log.Fatal(e)
-	}
-	e = os.Remove("Data/hyperLogLog/usertable-lvl=" + strconv.Itoa(whatLvl) + "-gen=" + strconv.Itoa(current) + "-HyperLogLog.db")
 	if e != nil {
 		log.Fatal(e)
 	}
