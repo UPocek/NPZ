@@ -7,6 +7,7 @@ import (
 	"hash"
 	"math"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -69,9 +70,8 @@ func (cms *CountMinSketch) FrequencyOfElement(element string) uint {
 
 }
 
-func (cms CountMinSketch) SerializeCountMinSketch(name string) string {
-	name = "Data/countMinSketch/usertable" + name + "-CountMinSketch.db"
-	file, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE, 0777)
+func (cms CountMinSketch) SerializeCountMinSketch(gen, lvl int) {
+	file, err := os.Create("Data/countMinSketch/usertable-lvl=" + strconv.Itoa(lvl) + "-gen=" + strconv.Itoa(gen) + "-CountMinSketch.db")
 	if err != nil {
 		panic(err)
 	}
@@ -84,11 +84,10 @@ func (cms CountMinSketch) SerializeCountMinSketch(name string) string {
 	if err != nil {
 		panic(err)
 	}
-	return name
 }
 
-func DeserializeCountMinSketch(name string) *CountMinSketch {
-	file, err := os.OpenFile("Data/countMinSketch/usertable"+name+"-CountMinSketch.db", os.O_RDWR, 0777)
+func DeserializeCountMinSketch(gen, lvl int) CountMinSketch {
+	file, err := os.OpenFile("Data/countMinSketch/usertable-lvl="+strconv.Itoa(lvl)+"-gen="+strconv.Itoa(gen)+"-CountMinSketch.db", os.O_RDWR, 0777)
 	if err != nil {
 		panic(err)
 	}
@@ -100,7 +99,7 @@ func DeserializeCountMinSketch(name string) *CountMinSketch {
 	}
 	cms.hashFunctions, cms.Ts = createHashFunctions(cms.K, cms.Ts)
 	file.Close()
-	return &cms
+	return cms
 }
 
 func calculateM(epsilon float64) uint {
