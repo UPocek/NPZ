@@ -8,7 +8,6 @@ import (
 	"math"
 	"math/bits"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -86,8 +85,9 @@ func (hll *HLL) Estimate() float64 {
 	return estimation
 }
 
-func (hll HLL) SerializeHLL(gen, lvl int) {
-	file, err := os.Create("Data/hyperLogLog/usertable-lvl=" + strconv.Itoa(lvl) + "-gen=" + strconv.Itoa(gen) + "-HyperLogLog.db")
+func (hll HLL) SerializeHLL(name string) string {
+	name = "Data/hyperLogLog/usertable-" + name + "-HyperLogLog.db"
+	file, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		panic(err)
 	}
@@ -97,10 +97,11 @@ func (hll HLL) SerializeHLL(gen, lvl int) {
 		panic(err)
 	}
 	file.Close()
+	return name
 }
 
-func DeserializeHLL(gen, lvl int) HLL {
-	file, err := os.OpenFile("Data/hyperLogLog/usertable-lvl="+strconv.Itoa(lvl)+"-gen="+strconv.Itoa(gen)+"-HyperLogLog.db", os.O_RDWR, 0777)
+func DeserializeHLL(name string) *HLL {
+	file, err := os.OpenFile(name, os.O_RDWR, 0777)
 	if err != nil {
 		panic(err)
 	}
@@ -112,7 +113,7 @@ func DeserializeHLL(gen, lvl int) HLL {
 	}
 	hll.hashFunction = murmur3.New32WithSeed(uint32(hll.Ts))
 	file.Close()
-	return hll
+	return &hll
 }
 
 func main() {

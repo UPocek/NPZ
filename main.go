@@ -6,6 +6,6 @@ import (
 
 func main() {
 	app := App.CreateApp()
-	app.RunApp()
+	app.RunApp(true)
 	app.StopApp()
 }
