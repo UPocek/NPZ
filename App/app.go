@@ -45,6 +45,20 @@ func CreateApp() App {
 	if err == nil {
 		yaml.Unmarshal(yfile, &app.data)
 		fromYaml = true
+	} else {
+		app.data["wal_size"] = 5
+		app.data["wal_lwm"] = 3
+		app.data["memtable_size"] = 10
+		app.data["memtable_threshold"] = 70
+		app.data["cache_max_size"] = 5
+		app.data["lsm_max_lvl"] = 3
+		app.data["lsm_merge_threshold"] = 2
+		app.data["skiplist_max_height"] = 10
+		app.data["hll_precision"] = 4
+		app.data["tokenbucket_size"] = 200
+		app.data["tokenbucket_interval"] = 60
+		app.data["cmsEpsilon"] = 1
+		app.data["cmsDelta"] = 1
 	}
 	app.memtable = Memtable.CreateMemtable(app.data, fromYaml)
 	app.cache = Cache.CreateCache(uint32(app.data["cache_max_size"]))
