@@ -13,9 +13,9 @@ Put simply, big data is larger, more complex data sets, especially from new data
 
 ## Implementation
 
-Algorithms and data structures were implemente from scretch in programing language Golang with best possible performance in mind. Also all engine layers could be configured from a single config.yaml file located in root of this repo.
+Algorithms and data structures were implemented from scratch in the programing language Golang with the best possible performance in mind. Also, all engine layers could be configured from a single config.yaml file located at the root of this repo.
 
-For testing purposes we created API and hosted it on: https://nasp.mattmarketing.rs/ so you can try it for your self.
+For testing purposes, we created an API and hosted it on: https://nasp.mattmarketing.rs/ so you can try it for yourself. Just click the + button on the login page to create your account and after successful login, you will be able to see are engine inspired by [CassandraDB](https://cassandra.apache.org/_/index.html) in action.
 
 ![Login Screen](https://github.com/UPocek/NPZ/blob/main/frontend/login.png)
 ![Main API](https://github.com/UPocek/NPZ/blob/main/frontend/engine-api.png)
@@ -32,5 +32,3 @@ For testing purposes we created API and hosted it on: https://nasp.mattmarketing
 - [SkipList](https://www.cs.cmu.edu/~ckingsf/bioinfo-lectures/skiplists.pdf)
 - [Token Bucket](https://www.sciencedirect.com/topics/computer-science/token-bucket)
 - [Write Ahead Log](https://www.bytebase.com/database-glossary/write-ahead-logs-wal)
-
-
